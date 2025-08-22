@@ -30,42 +30,46 @@ const Download = ({ className }) => (
 const CreateConfig = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    configurationName: '',
-    thresholdForce: '',
+    configName: '',
+    distance: '',
     temperature: '',
-    pathLength: ''
+    peakForce: ''
   });
   
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [showSerialError, setShowSerialError] = useState(true);
 
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.configurationName.trim()) {
-      newErrors.configurationName = 'Configuration name is required';
+    // Validate Configuration Name (alphabets only)
+    if (!formData.configName.trim()) {
+      newErrors.configName = 'Configuration name is required';
+    } else if (!/^[A-Za-z]+$/.test(formData.configName)) {
+      newErrors.configName = 'Configuration name must contain only alphabets';
     }
     
-    if (!formData.thresholdForce.trim()) {
-      newErrors.thresholdForce = 'Threshold force is required';
-    } else if (isNaN(formData.thresholdForce) || parseFloat(formData.thresholdForce) <= 0) {
-      newErrors.thresholdForce = 'Please enter a valid positive number';
+    // Validate Distance (numeric)
+    if (!formData.distance.trim()) {
+      newErrors.distance = 'Distance is required';
+    } else if (isNaN(formData.distance) || parseFloat(formData.distance) <= 0) {
+      newErrors.distance = 'Please enter a valid positive number';
     }
     
+    // Validate Temperature (numeric)
     if (!formData.temperature.trim()) {
       newErrors.temperature = 'Temperature is required';
-    } else {
-      const temp = parseFloat(formData.temperature);
-      if (isNaN(temp) || temp < 37 || temp > 40) {
-        newErrors.temperature = 'Temperature must be between 37-40°C';
-      }
+    } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
+      newErrors.temperature = 'Please enter a valid positive number';
     }
     
-    if (!formData.pathLength.trim()) {
-      newErrors.pathLength = 'Path length is required';
-    } else if (isNaN(formData.pathLength) || parseFloat(formData.pathLength) <= 0) {
-      newErrors.pathLength = 'Please enter a valid positive number';
+    // Validate Peak Force (numeric)
+    if (!formData.peakForce.trim()) {
+      newErrors.peakForce = 'Peak force is required';
+    } else if (isNaN(formData.peakForce) || parseFloat(formData.peakForce) <= 0) {
+      newErrors.peakForce = 'Please enter a valid positive number';
     }
     
     setErrors(newErrors);
@@ -74,9 +78,20 @@ const CreateConfig = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
+    
+    // Validation based on field type
+    if (name === 'configName' && !/^[a-zA-Z]*$/.test(value)) {
+      return; // Only allow alphabets for config name
+    }
+    
+    if ((name === 'distance' || name === 'temperature' || name === 'peakForce') && 
+        !/^\d*\.?\d*$/.test(value)) {
+      return; // Only allow numbers for numeric fields
+    }
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: value 
     }));
     
     if (errors[name]) {
@@ -85,42 +100,9 @@ const CreateConfig = () => {
         [name]: ''
       }));
     }
-  };
-
-  const convertToCSV = (data) => {
-    const headers = ['Configuration Name', 'Threshold Force (N)', 'Temperature (°C)', 'Path Length (mm)', 'Created At'];
-    const values = [
-      data.configurationName,
-      data.thresholdForce,
-      data.temperature,
-      data.pathLength,
-      new Date().toISOString()
-    ];
     
-    return [
-      headers.join(','),
-      values.map(value => `"${value}"`).join(',')
-    ].join('\n');
-  };
-
-  const saveToCSV = async (data) => {
-    try {
-      const csvContent = convertToCSV(data);
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `configuration_${data.configurationName.replace(/\s+/g, '_')}_${Date.now()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      return true;
-    } catch (error) {
-      console.error('Error saving CSV:', error);
-      return false;
+    if (successMessage) {
+      setSuccessMessage('');
     }
   };
 
@@ -134,27 +116,39 @@ const CreateConfig = () => {
     setIsLoading(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const success = await saveToCSV(formData);
-      
-      if (success) {
-        setFormData({
-          configurationName: '',
-          thresholdForce: '',
-          temperature: '',
-          pathLength: ''
-        });
-        alert('Configuration created and saved successfully!');
-      } else {
-        alert('Error saving configuration. Please try again.');
+      // Check for duplicate configuration names
+      const existingConfigs = await window.electronAPI.readConfigFile();
+      if (existingConfigs.some(config => config.configName === formData.configName)) {
+        setErrors({ configName: 'Configuration Name already exists' });
+        setIsLoading(false);
+        return;
       }
+      
+      // Add new config and save
+      const updatedConfigs = [...existingConfigs, formData];
+      await window.electronAPI.writeConfigFile(updatedConfigs);
+      
+      setSuccessMessage('Configuration has been saved successfully');
+      setErrors({});
+      
+      // Reset form
+      setFormData({
+        configName: '',
+        distance: '',
+        temperature: '',
+        peakForce: ''
+      });
+      
     } catch (error) {
-      console.error('Error creating configuration:', error);
-      alert('Error creating configuration. Please try again.');
+      console.error('Error saving configuration:', error);
+      setErrors({ submit: 'Error saving configuration. Please try again.' });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBack = () => {
+    navigate('/main-menu');
   };
 
   return (
@@ -164,7 +158,7 @@ const CreateConfig = () => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button 
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-6 h-6 text-slate-600" />
@@ -198,61 +192,82 @@ const CreateConfig = () => {
           </div>
         )}
 
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg shadow-sm">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <p className="text-green-800 font-semibold">{successMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Submit Error */}
+        {errors.submit && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-red-800 font-semibold">{errors.submit}</p>
+            </div>
+          </div>
+        )}
+
         {/* Main Form Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           <div className="p-6 md:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Configuration Name */}
               <div className="space-y-2">
-                <label htmlFor="configurationName" className="block text-sm font-semibold text-slate-700">
-                  Configuration Name
+                <label htmlFor="configName" className="block text-sm font-semibold text-slate-700">
+                  Configuration Name (Alphabets only)
                 </label>
                 <input
                   type="text"
-                  id="configurationName"
-                  name="configurationName"
-                  value={formData.configurationName}
+                  id="configName"
+                  name="configName"
+                  value={formData.configName}
                   onChange={handleInputChange}
                   placeholder="Enter configuration name"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                    errors.configurationName 
+                    errors.configName 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500'
                   }`}
                 />
-                {errors.configurationName && (
+                {errors.configName && (
                   <p className="text-red-500 text-sm flex items-center space-x-1">
                     <AlertCircle className="w-4 h-4" />
-                    <span>{errors.configurationName}</span>
+                    <span>{errors.configName}</span>
                   </p>
                 )}
               </div>
 
-              {/* Threshold Force and Temperature Row */}
+              {/* Distance and Temperature Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Threshold Force */}
+                {/* Distance */}
                 <div className="space-y-2">
-                  <label htmlFor="thresholdForce" className="block text-sm font-semibold text-slate-700">
-                    Threshold Force (N)
+                  <label htmlFor="distance" className="block text-sm font-semibold text-slate-700">
+                    Distance (mm)
                   </label>
                   <input
                     type="number"
-                    id="thresholdForce"
-                    name="thresholdForce"
-                    value={formData.thresholdForce}
+                    id="distance"
+                    name="distance"
+                    value={formData.distance}
                     onChange={handleInputChange}
-                    placeholder="Enter threshold force..."
+                    placeholder="Enter distance"
                     step="0.01"
+                    min="0"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                      errors.thresholdForce 
+                      errors.distance 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
                     }`}
                   />
-                  {errors.thresholdForce && (
+                  {errors.distance && (
                     <p className="text-red-500 text-sm flex items-center space-x-1">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{errors.thresholdForce}</span>
+                      <span>{errors.distance}</span>
                     </p>
                   )}
                 </div>
@@ -268,10 +283,9 @@ const CreateConfig = () => {
                     name="temperature"
                     value={formData.temperature}
                     onChange={handleInputChange}
-                    placeholder="Enter temp (37-40)"
-                    min="37"
-                    max="40"
+                    placeholder="Enter temperature"
                     step="0.1"
+                    min="0"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.temperature 
                         ? 'border-red-300 focus:border-red-500' 
@@ -287,39 +301,40 @@ const CreateConfig = () => {
                 </div>
               </div>
 
-              {/* Path Length */}
+              {/* Peak Force */}
               <div className="space-y-2">
-                <label htmlFor="pathLength" className="block text-sm font-semibold text-slate-700">
-                  Path Length (mm)
+                <label htmlFor="peakForce" className="block text-sm font-semibold text-slate-700">
+                  Peak Force (N)
                 </label>
                 <input
                   type="number"
-                  id="pathLength"
-                  name="pathLength"
-                  value={formData.pathLength}
+                  id="peakForce"
+                  name="peakForce"
+                  value={formData.peakForce}
                   onChange={handleInputChange}
-                  placeholder="Enter path length (--)"
+                  placeholder="Enter peak force"
                   step="0.01"
+                  min="0"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                    errors.pathLength 
+                    errors.peakForce 
                       ? 'border-red-300 focus:border-red-500' 
                       : 'border-slate-200 focus:border-blue-500'
                   }`}
                 />
-                {errors.pathLength && (
+                {errors.peakForce && (
                   <p className="text-red-500 text-sm flex items-center space-x-1">
                     <AlertCircle className="w-4 h-4" />
-                    <span>{errors.pathLength}</span>
+                    <span>{errors.peakForce}</span>
                   </p>
                 )}
               </div>
 
               {/* Submit Button */}
-              <div className="pt-6">
+              <div className="pt-6 flex space-x-4">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full md:w-auto md:ml-auto md:block bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
                 >
                   {isLoading ? (
                     <>
@@ -332,6 +347,14 @@ const CreateConfig = () => {
                       <span>Create</span>
                     </>
                   )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-4 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
                 </button>
               </div>
             </form>
@@ -347,9 +370,9 @@ const CreateConfig = () => {
             <div>
               <h3 className="font-semibold text-blue-900 mb-2">Configuration Guidelines</h3>
               <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Configuration will be automatically saved as CSV file</li>
-                <li>• Temperature must be within operational range (37-40°C)</li>
-                <li>• All values are validated before saving</li>
+                <li>• Configuration Name must contain only alphabets (no numbers or special characters)</li>
+                <li>• All values are required and must be positive numbers</li>
+                <li>• Configuration will be saved to ConfigFile.csv</li>
                 <li>• Ensure serial port connection before creating configuration</li>
               </ul>
             </div>
