@@ -1,18 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCcw, Camera } from 'lucide-react';
+// import { useNavigate } from 'react-router-dom';
 
 const Manual = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
   const [showSerialError, setShowSerialError] = useState(true);
   const [temperature, setTemperature] = useState(37.5);
   const [force, setForce] = useState(0);
+  const [cameraError, setCameraError] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(true);
   const [controls, setControls] = useState({
     clamp: false,
     heater: false,
     homing: false
   });
   const [catheterPosition, setCatheterPosition] = useState(50); // Percentage position
+
+  // Initialize camera feed
+  useEffect(() => {
+    const initCamera = async () => {
+      try {
+        setCameraLoading(true);
+        setCameraError(false);
+        
+        // Request camera access
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'environment' // Use back camera if available
+          },
+          audio: false
+        });
+        
+        streamRef.current = stream;
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        
+        setCameraLoading(false);
+      } catch (error) {
+        console.error('Camera access error:', error);
+        setCameraError(true);
+        setCameraLoading(false);
+      }
+    };
+
+    initCamera();
+
+    // Cleanup function
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+      }
+    };
+  }, []);
 
   // Simulate real-time data updates
   useEffect(() => {
@@ -58,6 +105,34 @@ const Manual = () => {
     }, 2000);
   };
 
+  const retryCamera = async () => {
+    setCameraLoading(true);
+    setCameraError(false);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment'
+        },
+        audio: false
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      
+      setCameraLoading(false);
+    } catch (error) {
+      console.error('Camera retry error:', error);
+      setCameraError(true);
+      setCameraLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
@@ -65,7 +140,7 @@ const Manual = () => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button 
-              onClick={() => navigate('/main-menu')}
+              onClick={() => window.history.back()}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-6 h-6 text-slate-600" />
@@ -113,36 +188,74 @@ const Manual = () => {
               
               {/* Video Container */}
               <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
-                {/* Simulated medical device view */}
-                <div className="relative w-full h-full bg-gradient-to-br from-slate-300 to-slate-400">
-                  {/* Catheter visualization */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative w-3/4 h-2 bg-slate-600 rounded-full">
-                      {/* Catheter tip */}
-                      <div 
-                        className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-blue-600 rounded-full shadow-lg transition-all duration-300"
-                        style={{ left: `${catheterPosition}%` }}
-                      ></div>
+                {cameraLoading ? (
+                  // Loading state
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
+                    <p className="text-slate-600 font-medium">Initializing camera...</p>
+                  </div>
+                ) : cameraError ? (
+                  // Error state
+                  <div className="flex flex-col items-center space-y-4 p-8">
+                    <Camera className="w-16 h-16 text-slate-400" />
+                    <div className="text-center">
+                      <p className="text-slate-600 font-medium mb-2">Camera not available</p>
+                      <p className="text-slate-500 text-sm mb-4">Please check camera permissions and connection</p>
+                      <button 
+                        onClick={retryCamera}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                      >
+                        Retry Camera
+                      </button>
                     </div>
                   </div>
-                  
-                  {/* Grid overlay */}
-                  <div className="absolute inset-0 opacity-20">
-                    <svg className="w-full h-full">
-                      <defs>
-                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1"/>
-                        </pattern>
-                      </defs>
-                      <rect width="100%" height="100%" fill="url(#grid)" />
-                    </svg>
-                  </div>
-                  
-                  {/* Status indicator */}
-                  <div className="absolute top-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-lg text-sm">
-                    Position: {catheterPosition}%
-                  </div>
-                </div>
+                ) : (
+                  // Live camera feed
+                  <>
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    
+                    {/* Overlay elements */}
+                    <div className="absolute inset-0">
+                      {/* Grid overlay */}
+                      <div className="absolute inset-0 opacity-20">
+                        <svg className="w-full h-full">
+                          <defs>
+                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1"/>
+                            </pattern>
+                          </defs>
+                          <rect width="100%" height="100%" fill="url(#grid)" />
+                        </svg>
+                      </div>
+                      
+                      {/* Position indicator */}
+                      <div className="absolute top-4 left-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg text-sm font-medium">
+                        Position: {catheterPosition}%
+                      </div>
+                      
+                      {/* Catheter position indicator */}
+                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-24 h-2 bg-slate-600 rounded-full">
+                              <div 
+                                className="h-full bg-blue-400 rounded-full transition-all duration-300"
+                                style={{ width: `${catheterPosition}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs font-medium">{catheterPosition}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Sensor Readings */}
