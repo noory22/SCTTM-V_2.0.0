@@ -19,7 +19,7 @@ const HandleConfig = ({ mode = 'load' }) => {
   const loadAvailableConfigs = async () => {
     try {
       setLoadingConfigs(true);
-      const configs = await window.electronAPI.readConfigFile();
+      const configs = await window.serialAPI.readConfigFile();
       setAvailableConfigs(configs);
     } catch (error) {
       console.error('Error loading configurations:', error);
@@ -53,7 +53,7 @@ const HandleConfig = ({ mode = 'load' }) => {
     setIsLoading(true);
     
     try {
-      const success = await window.electronAPI.deleteConfigFile(selectedConfig.configName);
+      const success = await window.serialAPI.deleteConfigFile(selectedConfig.configName);
       
       if (success) {
         // Refresh the config list
@@ -76,7 +76,7 @@ const HandleConfig = ({ mode = 'load' }) => {
   };
 
   const handleBack = () => {
-    navigate('/menu');
+    navigate('/main-menu');
   };
 
   const getPageTitle = () => {

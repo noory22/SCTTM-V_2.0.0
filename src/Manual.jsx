@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCcw, Camera } from 'lucide-react';
-// import { useNavigate } from 'react-router-dom';
 
 const Manual = () => {
-  // const navigate = useNavigate();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const [showSerialError, setShowSerialError] = useState(true);
-  const [temperature, setTemperature] = useState(37.5);
+  const [showSerialError, setShowSerialError] = useState(false);
+  const [temperature, setTemperature] = useState(0);
   const [force, setForce] = useState(0);
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
@@ -16,8 +14,9 @@ const Manual = () => {
     heater: false,
     homing: false
   });
-  const [catheterPosition, setCatheterPosition] = useState(50); // Percentage position
-   // Setup serial communication listeners
+  const [catheterPosition, setCatheterPosition] = useState(0);
+
+  // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
       setTemperature(temp);
@@ -36,10 +35,18 @@ const Manual = () => {
       setShowSerialError(true);
     };
 
+    const handleProcessResponse = (response) => {
+      if (response === 'reset' || response === 'homing') {
+        setControls(prev => ({ ...prev, homing: false }));
+        setCatheterPosition(0); // Reset position after homing
+      }
+    };
+
     // Setup listeners
     window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
     window.serialAPI.onForceUpdate(handleForceUpdate);
     window.serialAPI.onManualResponse(handleManualResponse);
+    window.serialAPI.onProcessResponse(handleProcessResponse);
     window.serialAPI.onError(handleSerialError);
 
     // Cleanup listeners
@@ -47,6 +54,7 @@ const Manual = () => {
       window.serialAPI.removeAllListeners('temperature-update');
       window.serialAPI.removeAllListeners('force-update');
       window.serialAPI.removeAllListeners('manual-response');
+      window.serialAPI.removeAllListeners('process-response');
       window.serialAPI.removeAllListeners('serial-error');
     };
   }, []);
@@ -63,7 +71,7 @@ const Manual = () => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: 'environment' // Use back camera if available
+            facingMode: 'environment'
           },
           audio: false
         });
@@ -94,23 +102,6 @@ const Manual = () => {
     };
   }, []);
 
-  // Simulate real-time data updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate temperature fluctuation
-      if (controls.heater) {
-        setTemperature(prev => Math.min(40, prev + (Math.random() * 0.5)));
-      } else {
-        setTemperature(prev => Math.max(20, prev - (Math.random() * 0.2)));
-      }
-      
-      // Simulate force readings
-      setForce(prev => Math.max(0, prev + (Math.random() * 2 - 1)));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [controls.heater]);
-
   const handleControlToggle = async (controlName) => {
     try {
       if (controlName === 'clamp') {
@@ -124,7 +115,7 @@ const Manual = () => {
       }
     } catch (error) {
       console.error('Control error:', error);
-      // Handle error - maybe show notification
+      setShowSerialError(true);
     }
   };
 
@@ -133,7 +124,7 @@ const Manual = () => {
       // Send motor command via serial
       await window.serialAPI.moveMotor(direction);
       
-      // Update UI position
+      // Update UI position (this is just visual - real position should come from device)
       setCatheterPosition(prev => {
         if (direction === 'backward') {
           return Math.max(0, prev - 10);
@@ -143,25 +134,21 @@ const Manual = () => {
       });
     } catch (error) {
       console.error('Motor movement error:', error);
-      // Handle error - maybe show notification
+      setShowSerialError(true);
     }
   };
 
   const resetCatheter = async () => {
     try {
-      // Send reset command via serial (using process reset for homing)
+      // Send homing command via serial
+      setControls(prev => ({ ...prev, homing: true }));
       await window.serialAPI.processReset();
       
-      setCatheterPosition(50);
-      setControls(prev => ({ ...prev, homing: true }));
-      
-      // Simulate homing process
-      setTimeout(() => {
-        setControls(prev => ({ ...prev, homing: false }));
-      }, 2000);
+      // The actual position reset will happen when we receive the homing complete response
     } catch (error) {
       console.error('Homing error:', error);
-      // Handle error
+      setShowSerialError(true);
+      setControls(prev => ({ ...prev, homing: false }));
     }
   };
 
@@ -208,8 +195,11 @@ const Manual = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
           </div>
           
-          <button className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200">
-            <Power className="w-6 h-6" />
+          <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
+              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </button>
         </div>
 
@@ -220,8 +210,8 @@ const Manual = () => {
               <div className="flex items-center space-x-3">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                 <div>
-                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
-                  <p className="text-red-600 text-sm mt-1">Please ensure the device is connected and try again.</p>
+                  <p className="text-red-800 font-semibold">SERIAL COMMUNICATION ERROR</p>
+                  <p className="text-red-600 text-sm mt-1">Please check device connection and try again.</p>
                 </div>
               </div>
               <button 
@@ -367,7 +357,7 @@ const Manual = () => {
           <div className="space-y-6">
             {/* Clamp Control */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp OFF</h3>
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Clamp {controls.clamp ? 'ON' : 'OFF'}</h3>
               <div className="flex justify-center">
                 <button
                   onClick={() => handleControlToggle('clamp')}
@@ -395,13 +385,13 @@ const Manual = () => {
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Catheter Movement</h3>
               <div className="flex justify-center space-x-4 mb-4">
                 <button
-                  onClick={() => moveCatheter('left')}
+                  onClick={() => moveCatheter('backward')}
                   className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
-                  onClick={() => moveCatheter('right')}
+                  onClick={() => moveCatheter('forward')}
                   className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   <ChevronRight className="w-6 h-6" />

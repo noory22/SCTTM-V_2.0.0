@@ -1,11 +1,9 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import "./index.css";
 
 // preload.js
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("electronAPI", {
+contextBridge.exposeInMainWorld("serialAPI", {
   // Config file operations
   readConfigFile: () => ipcRenderer.invoke("read-config-file"),
   writeConfigFile: (configs) =>

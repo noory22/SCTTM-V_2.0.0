@@ -96,38 +96,31 @@ const MainMenu = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Header */}
       <header className="flex items-center px-8 py-6 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10">
-        <button 
-          className="group p-3 rounded-xl hover:bg-gray-100/80 text-gray-600 hover:text-gray-800 transition-all duration-300 hover:-translate-x-1 mr-6 backdrop-blur-sm"
-          onClick={handleBackClick}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
-            <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <button 
+        className="group p-3 rounded-xl hover:bg-gray-100/80 text-gray-600 hover:text-gray-800 transition-all duration-300 hover:-translate-x-1 mr-6 backdrop-blur-sm"
+        onClick={handleBackClick}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
+          <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      
+      <div className="flex-1">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+          Main Menu
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">Select an option to continue</p>
+      </div>
+      
+      <div className="flex items-center gap-6">
+        <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
+            <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </button>
-        
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            Main Menu
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">Select an option to continue</p>
-        </div>
-        
-        <div className="flex items-center gap-6">
-          <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-lg font-semibold text-sm tracking-wider shadow-lg border border-red-400/30">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <span className="whitespace-nowrap">SERIAL PORT ERROR</span>
-            </div>
-          </div>
-          
-          <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
-              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                    stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </header>
+      </div>
+    </header>
 
       {/* Main Content */}
       <main className="flex-1 flex items-start justify-center px-8 py-16 gap-20 max-w-8xl mx-auto w-full">

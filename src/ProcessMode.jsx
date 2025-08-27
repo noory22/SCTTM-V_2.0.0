@@ -18,7 +18,7 @@ const ProcessMode = () => {
   const startTimeRef = useRef(Date.now());
 
   // Simulate real-time data (replace with actual WebSocket/Serial communication)
-  u// Setup serial communication listeners
+  // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
       setSensorData(prev => ({ ...prev, temperature: temp.toFixed(1) }));
@@ -71,8 +71,8 @@ const ProcessMode = () => {
     };
 
     // Setup listeners
-    window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
     window.serialAPI.onForceUpdate(handleForceUpdate);
+    window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
     window.serialAPI.onProcessResponse(handleProcessResponse);
     window.serialAPI.onError(handleSerialError);
 

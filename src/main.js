@@ -5,6 +5,8 @@ import started from 'electron-squirrel-startup';
 import "./index.css";
 const { SerialPort } = require('serialport');
 
+const TARGET_HWID = "3267334E3133"
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
@@ -12,43 +14,107 @@ if (started) {
 }
 
 
-
+let mainWindow;
 let currentPort = null;
 
+const createWindow = () => {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: 1024,
+    height: 768,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+  });
+
+
+
+
+if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+  }
+
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // 🔹 Auto-connect to port on startup
+  autoConnectPort();
+};
+
+// Auto-connect function
+async function autoConnectPort() {
+  try {
+    const ports = await SerialPort.list();
+    let selectedPort = null;
+
+    for (const port of ports) {
+      console.log(`Checking port: ${port.path}, HWID: ${port.pnpId || ""}`);
+      if ((port.pnpId || "").includes(TARGET_HWID)) {
+        selectedPort = port.path;
+        break;
+      }
+    }
+
+    if (selectedPort) {
+      console.log(`✅ Found target device on ${selectedPort}, connecting...`);
+      await connectToPort(selectedPort, 9600);
+    } else {
+      console.error("❌ Target device not found.");
+      if (mainWindow) {
+        mainWindow.webContents.send("serial-error", "Target serial device not found");
+      }
+    }
+  } catch (err) {
+    console.error("Error while scanning ports:", err);
+  }
+}
+
+// Wrapper for connecting
+function connectToPort(path, baudRate) {
+  return new Promise((resolve, reject) => {
+    currentPort = new SerialPort({ path, baudRate, autoOpen: true });
+
+    currentPort.on('open', () => {
+      console.log(`✅ Auto-connected to ${path} @ ${baudRate}`);
+      resolve(`Connected to ${path} @ ${baudRate}`);
+    });
+
+    currentPort.on('data', (data) => {
+      const dataString = data.toString().trim();
+      console.log('Received data:', dataString);
+      parseReceivedData(dataString);
+      if (mainWindow) {
+        mainWindow.webContents.send('serial-data', dataString);
+      }
+    });
+
+    currentPort.on('error', (e) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('serial-error', e.message);
+      }
+    });
+
+    currentPort.on('close', () => {
+      if (mainWindow) {
+        mainWindow.webContents.send('serial-error', 'Port was closed');
+      }
+    });
+  });
+}
+
+// Existing IPC handlers
 ipcMain.handle('list-ports', async () => {
   return await SerialPort.list();
 });
 
 ipcMain.handle('connect-port', async (event, args) => {
   const { path, baudRate } = args;
-  return new Promise((resolve, reject) => {
-    currentPort = new SerialPort({ path, baudRate }, (err) => {
-      if (err) {
-        currentPort = null;
-        return reject(`Connection error: ${err.message}`);
-      }
-      resolve(`Connected to ${path} @ ${baudRate}`);
-      
-      // Setup listeners after open
-      currentPort.on('data', (data) => {
-        const dataString = data.toString().trim();
-        console.log('Received data:', dataString);
-        
-        // Parse the received data according to protocol
-        parseReceivedData(dataString);
-        
-        mainWindow.webContents.send('serial-data', dataString);
-      });
-      
-      currentPort.on('error', (e) => {
-        mainWindow.webContents.send('serial-error', e.message);
-      });
-      
-      currentPort.on('close', () => {
-        mainWindow.webContents.send('serial-error', 'Port was closed');
-      });
-    });
-  });
+  return connectToPort(path, baudRate);
 });
 
 ipcMain.handle('send-data', async (event, data) => {
@@ -67,6 +133,7 @@ ipcMain.handle('send-data', async (event, data) => {
 // Manual mode specific commands
 ipcMain.handle('move-motor', async (event, direction) => {
   const command = direction === 'forward' ? '*2:4:1:1#' : '*2:4:1:2#';
+  console.log(`🔄 MOTOR COMMAND: ${command} (Direction: ${direction})`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -80,6 +147,7 @@ ipcMain.handle('move-motor', async (event, direction) => {
 
 ipcMain.handle('control-heater', async (event, state) => {
   const command = state === 'on' ? '*2:7:1#' : '*2:7:2#';
+  console.log(`🔥 HEATER COMMAND: ${command} (State: ${state})`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -94,6 +162,7 @@ ipcMain.handle('control-heater', async (event, state) => {
 ipcMain.handle('control-clamp', async (event, state) => {
   // Clamp is controlled via Valve 1 (button 5 in protocol)
   const command = state === 'on' ? '*2:5:1#' : '*2:5:2#';
+  console.log(`🔒 CLAMP COMMAND: ${command} (State: ${state})`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -107,7 +176,8 @@ ipcMain.handle('control-clamp', async (event, state) => {
 
 // Process mode specific commands
 ipcMain.handle('process-start', async (event) => {
-  const command = '*1:1:xxx:xxx:xxx:xxx#';
+  const command = '*1:1:xxx:xxx:xxx#';
+  console.log(`▶️ PROCESS START COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -120,7 +190,8 @@ ipcMain.handle('process-start', async (event) => {
 });
 
 ipcMain.handle('process-pause', async (event) => {
-  const command = '*1:2:xxx:xxx:xxx:xxx#';
+  const command = '*1:2:xxx:xxx:xxx#';
+  console.log(`⏸️ PROCESS PAUSE COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -133,7 +204,8 @@ ipcMain.handle('process-pause', async (event) => {
 });
 
 ipcMain.handle('process-reset', async (event) => {
-  const command = '*1:3:xxx:xxx:xxx:xxx#';
+  const command = '*1:3:xxx:xxx:xxx#';
+  console.log(`🔄 PROCESS RESET/HOMING COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
       return reject('Cannot send data - Port not Open');
@@ -152,6 +224,7 @@ function parseReceivedData(data) {
       const tempMatch = data.match(/\*TEP:(\d+)#/);
       if (tempMatch) {
         const temperature = parseInt(tempMatch[1]) / 10; // Assuming temperature is in tenths
+        console.log(`🌡️ TEMPERATURE UPDATE: ${temperature}°C`);
         mainWindow.webContents.send('temperature-update', temperature);
       }
     }
@@ -161,26 +234,32 @@ function parseReceivedData(data) {
       const forceMatch = data.match(/\*FRC:(\d+)#/);
       if (forceMatch) {
         const force = parseInt(forceMatch[1]) / 100; // Assuming force needs scaling
+        console.log(`💪 FORCE UPDATE: ${force}N`);
         mainWindow.webContents.send('force-update', force);
       }
     }
     
     // Parse manual response: *MAN:RES#
     if (data.includes('*MAN:RES#')) {
+      console.log('✅ MANUAL COMMAND ACKNOWLEDGED');
       mainWindow.webContents.send('manual-response', 'Command acknowledged');
     }
     
     // Parse process responses
     if (data.includes('*PRS:STR#')) {
+      console.log('✅ PROCESS STARTED');
       mainWindow.webContents.send('process-response', 'started');
     }
     if (data.includes('*PRS:PUS#')) {
+      console.log('⏸️ PROCESS PAUSED');
       mainWindow.webContents.send('process-response', 'paused');
     }
     if (data.includes('*PRS:HOM#')) {
+      console.log('🔄 PROCESS RESET/HOMING COMPLETE');
       mainWindow.webContents.send('process-response', 'reset');
     }
     if (data.includes('*PRS:RED#')) {
+      console.log('🔄 HOMING IN PROGRESS');
       mainWindow.webContents.send('process-response', 'homing');
     }
   } catch (error) {
@@ -258,31 +337,20 @@ ipcMain.handle('delete-config-file', async (event, configName) => {
   return true;
 });
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
-    },
-  });
+// const createWindow = () => {
+//   // Create the browser window.
+//   const mainWindow = new BrowserWindow({
+//     width: 1024,
+//     height: 768,
+//     webPreferences: {
+//       preload: path.join(__dirname, 'preload.js'),
+//       nodeIntegration: false,
+//       contextIsolation: true
+//     },
+//   });
 
   // and load the index.html of the app.
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-  }
-
-  // Open the DevTools in development
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.webContents.openDevTools();
-  }
-};
-
+  
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
