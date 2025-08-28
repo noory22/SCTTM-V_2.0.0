@@ -208,7 +208,7 @@ const ProcessLogs = () => {
           </button>
         </div>
 
-        {/* Serial Port Error */}
+        {/* Serial Port Error
         {showSerialError && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center justify-between">
@@ -227,7 +227,7 @@ const ProcessLogs = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">

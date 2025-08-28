@@ -112,12 +112,15 @@ const HandleConfig = ({ mode = 'load' }) => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">{getPageTitle()}</h1>
           </div>
           
-          <button className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200">
-            <Power className="w-6 h-6" />
-          </button>
+          <button className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
+            <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
         </div>
 
-        {/* Serial Port Error (only for Load mode) */}
+        {/* Serial Port Error (only for Load mode)
         {showSerialError && mode === 'load' && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center justify-between">
@@ -136,7 +139,7 @@ const HandleConfig = ({ mode = 'load' }) => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

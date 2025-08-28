@@ -175,8 +175,8 @@ ipcMain.handle('control-clamp', async (event, state) => {
 });
 
 // Process mode specific commands
-ipcMain.handle('process-start', async (event) => {
-  const command = '*1:1:xxx:xxx:xxx#';
+ipcMain.handle('process-start-with-values', async (event, distance, temperature, peakForce) => {
+  const command = `*1:1:${distance}:${temperature}:${peakForce}#`;
   console.log(`▶️ PROCESS START COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
@@ -189,8 +189,8 @@ ipcMain.handle('process-start', async (event) => {
   });
 });
 
-ipcMain.handle('process-pause', async (event) => {
-  const command = '*1:2:xxx:xxx:xxx#';
+ipcMain.handle('process-pause-with-values', async (event, distance, temperature, peakForce) => {
+  const command = `*1:2:${distance}:${temperature}:${peakForce}#`;
   console.log(`⏸️ PROCESS PAUSE COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
@@ -203,8 +203,8 @@ ipcMain.handle('process-pause', async (event) => {
   });
 });
 
-ipcMain.handle('process-reset', async (event) => {
-  const command = '*1:3:xxx:xxx:xxx#';
+ipcMain.handle('process-reset-with-values', async (event, distance, temperature, peakForce) => {
+  const command = `*1:3:${distance}:${temperature}:${peakForce}#`;
   console.log(`🔄 PROCESS RESET/HOMING COMMAND: ${command}`);
   return new Promise((resolve, reject) => {
     if (!currentPort || !currentPort.isOpen) {
@@ -219,6 +219,9 @@ ipcMain.handle('process-reset', async (event) => {
 
 function parseReceivedData(data) {
   try {
+    const mainWindow = BrowserWindow.getFocusedWindow();
+    if (!mainWindow) return;
+    
     // Parse temperature data: *TEP:xxx#
     if (data.includes('*TEP:') && data.includes('#')) {
       const tempMatch = data.match(/\*TEP:(\d+)#/);
@@ -239,6 +242,16 @@ function parseReceivedData(data) {
       }
     }
     
+    // Parse distance data: *DST:xxxxxx#
+    if (data.includes('*DST:') && data.includes('#')) {
+      const distMatch = data.match(/\*DST:(\d+)#/);
+      if (distMatch) {
+        const distance = parseInt(distMatch[1]) / 10; // Assuming distance needs scaling
+        console.log(`📏 DISTANCE UPDATE: ${distance}mm`);
+        mainWindow.webContents.send('distance-update', distance);
+      }
+    }
+    
     // Parse manual response: *MAN:RES#
     if (data.includes('*MAN:RES#')) {
       console.log('✅ MANUAL COMMAND ACKNOWLEDGED');
@@ -255,18 +268,17 @@ function parseReceivedData(data) {
       mainWindow.webContents.send('process-response', 'paused');
     }
     if (data.includes('*PRS:HOM#')) {
-      console.log('🔄 PROCESS RESET/HOMING COMPLETE');
+      console.log('🔄 PROCESS RESET/HOMING STARTED');
       mainWindow.webContents.send('process-response', 'reset');
     }
     if (data.includes('*PRS:RED#')) {
-      console.log('🔄 HOMING IN PROGRESS');
-      mainWindow.webContents.send('process-response', 'homing');
+      console.log('🔄 HOMING COMPLETED - READY');
+      mainWindow.webContents.send('process-response', 'ready');
     }
   } catch (error) {
     console.error('Error parsing received data:', error);
   }
 }
-
 
 
 

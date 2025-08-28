@@ -174,7 +174,7 @@ const CreateConfig = () => {
         </button>
         </div>
 
-        {/* Serial Port Error */}
+        {/* Serial Port Error
         {showSerialError && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
             <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ const CreateConfig = () => {
               </button>
             </div>
           </div>
-        )}
+        )} */}
 
         {/* Success Message */}
         {successMessage && (

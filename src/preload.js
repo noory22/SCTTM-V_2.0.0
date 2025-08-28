@@ -23,9 +23,12 @@ contextBridge.exposeInMainWorld("serialAPI", {
   controlClamp: (state) => ipcRenderer.invoke("control-clamp", state),
 
   // Process mode specific commands
-  processStart: () => ipcRenderer.invoke("process-start"),
-  processPause: () => ipcRenderer.invoke("process-pause"),
-  processReset: () => ipcRenderer.invoke("process-reset"),
+  processStartWithValues: (distance, temperature, peakForce) =>
+  ipcRenderer.invoke("process-start-with-values", distance, temperature, peakForce),
+processPauseWithValues: (distance, temperature, peakForce) =>
+  ipcRenderer.invoke("process-pause-with-values", distance, temperature, peakForce),
+processResetWithValues: (distance, temperature, peakForce) =>
+  ipcRenderer.invoke("process-reset-with-values", distance, temperature, peakForce),
 
   // Event listeners
   onData: (callback) =>
@@ -36,6 +39,8 @@ contextBridge.exposeInMainWorld("serialAPI", {
     ipcRenderer.on("temperature-update", (event, temp) => callback(temp)),
   onForceUpdate: (callback) =>
     ipcRenderer.on("force-update", (event, force) => callback(force)),
+  onDistanceUpdate: (callback) =>
+  ipcRenderer.on("distance-update", (event, distance) => callback(distance)),
   onManualResponse: (callback) =>
     ipcRenderer.on("manual-response", (event, response) => callback(response)),
   onProcessResponse: (callback) =>

@@ -8,16 +8,24 @@ const ProcessMode = () => {
     temperature: '--',
     force: '--',
     distance: '--',
-    status: '--'
+    status: 'READY' // Changed default status to READY
   });
   const [chartData, setChartData] = useState([]);
   const [isProcessRunning, setIsProcessRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isHoming, setIsHoming] = useState(false); // Added homing state
+  const [selectedConfig, setSelectedConfig] = useState(null);
   const videoRef = useRef(null);
-  const wsRef = useRef(null);
   const startTimeRef = useRef(Date.now());
 
-  // Simulate real-time data (replace with actual WebSocket/Serial communication)
+  // Load selected configuration from localStorage
+  useEffect(() => {
+    const config = localStorage.getItem('selectedConfig');
+    if (config) {
+      setSelectedConfig(JSON.parse(config));
+    }
+  }, []);
+
   // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
@@ -39,6 +47,21 @@ const ProcessMode = () => {
       });
     };
 
+    const handleDistanceUpdate = (distance) => {
+      setSensorData(prev => ({ ...prev, distance: distance.toFixed(1) }));
+      
+      // Add to chart data
+      const currentTime = (Date.now() - startTimeRef.current) / 1000;
+      setChartData(prev => {
+        const newData = [...prev, {
+          time: currentTime.toFixed(1),
+          force: parseFloat(sensorData.force) || 0,
+          distance: parseFloat(distance.toFixed(1))
+        }];
+        return newData.slice(-60); // Keep last 60 points
+      });
+    };
+
     const handleProcessResponse = (response) => {
       console.log('Process response:', response);
       
@@ -46,21 +69,31 @@ const ProcessMode = () => {
         case 'started':
           setIsProcessRunning(true);
           setIsPaused(false);
+          setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
           startTimeRef.current = Date.now();
           break;
         case 'paused':
           setIsPaused(true);
+          setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
           break;
         case 'reset':
           setIsProcessRunning(false);
           setIsPaused(false);
+          setIsHoming(true); // Start homing process
           setChartData([]);
-          setSensorData(prev => ({ ...prev, status: 'RESET' }));
+          setSensorData(prev => ({ ...prev, status: 'HOMING' }));
           break;
         case 'homing':
+          setIsHoming(true);
           setSensorData(prev => ({ ...prev, status: 'HOMING' }));
+          break;
+        case 'ready': // Handle the PRS:RED feedback
+          setIsHoming(false);
+          setIsProcessRunning(false);
+          setIsPaused(false);
+          setSensorData(prev => ({ ...prev, status: 'READY' }));
           break;
       }
     };
@@ -73,6 +106,7 @@ const ProcessMode = () => {
     // Setup listeners
     window.serialAPI.onForceUpdate(handleForceUpdate);
     window.serialAPI.onTemperatureUpdate(handleTemperatureUpdate);
+    window.serialAPI.onDistanceUpdate(handleDistanceUpdate);
     window.serialAPI.onProcessResponse(handleProcessResponse);
     window.serialAPI.onError(handleSerialError);
 
@@ -80,10 +114,20 @@ const ProcessMode = () => {
     return () => {
       window.serialAPI.removeAllListeners('temperature-update');
       window.serialAPI.removeAllListeners('force-update');
+      window.serialAPI.removeAllListeners('distance-update');
       window.serialAPI.removeAllListeners('process-response');
       window.serialAPI.removeAllListeners('serial-error');
     };
-  }, [sensorData.distance]);
+  }, [sensorData.distance, sensorData.force]);
+
+  // Update main.js to handle PRS:RED feedback
+  // In the parseReceivedData function in main.js, add this case:
+  /*
+  if (data.includes('*PRS:RED#')) {
+    console.log('✅ HOMING COMPLETE - READY');
+    mainWindow.webContents.send('process-response', 'ready');
+  }
+  */
 
   // Initialize camera feed
   useEffect(() => {
@@ -114,10 +158,27 @@ const ProcessMode = () => {
     checkConnection();
   }, []);
 
+  const formatCommandValue = (value) => {
+    // Convert value to integer and ensure it's 3 digits with leading zeros
+    return Math.round(parseFloat(value)).toString().padStart(3, '0');
+  };
+
   const handleStart = async () => {
+    if (!selectedConfig) {
+      console.error('No configuration selected');
+      return;
+    }
+
     try {
-      await window.serialAPI.processStart();
-      console.log('Start command sent');
+      // Format the command with actual values from the selected configuration
+      const distanceVal = formatCommandValue(selectedConfig.distance);
+      const tempVal = formatCommandValue(selectedConfig.temperature);
+      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      
+      const command = `*1:1:${distanceVal}:${tempVal}:${forceVal}#`;
+      console.log('Start command with values:', command);
+      
+      await window.serialAPI.sendData(command);
       // State will be updated via the process response listener
     } catch (error) {
       console.error('Failed to start process:', error);
@@ -127,8 +188,15 @@ const ProcessMode = () => {
 
   const handlePause = async () => {
     try {
-      await window.serialAPI.processPause();
-      console.log('Pause command sent');
+      // Format the pause command with the same values
+      const distanceVal = formatCommandValue(selectedConfig.distance);
+      const tempVal = formatCommandValue(selectedConfig.temperature);
+      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      
+      const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
+      console.log('Pause command with values:', command);
+      
+      await window.serialAPI.sendData(command);
       // State will be updated via the process response listener
     } catch (error) {
       console.error('Failed to pause process:', error);
@@ -138,8 +206,15 @@ const ProcessMode = () => {
 
   const handleReset = async () => {
     try {
-      await window.serialAPI.processReset();
-      console.log('Reset command sent');
+      // Format the reset command with the same values
+      const distanceVal = formatCommandValue(selectedConfig.distance);
+      const tempVal = formatCommandValue(selectedConfig.temperature);
+      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      
+      const command = `*1:3:${distanceVal}:${tempVal}:${forceVal}#`;
+      console.log('Reset command with values:', command);
+      
+      await window.serialAPI.sendData(command);
       // State will be updated via the process response listener
     } catch (error) {
       console.error('Failed to reset process:', error);
@@ -151,10 +226,16 @@ const ProcessMode = () => {
     // This could trigger reconnection logic
     setIsConnected(!isConnected);
   };
+
+  // Check if buttons should be disabled
+  const shouldDisableButtons = () => {
+    return isHoming || !selectedConfig;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden">
       {/* Animated Background Pattern */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:20px_20px] opacity-50"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_极px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:20px_20px] opacity-50"></div>
       
       {/* Header */}
       <header className="relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
@@ -170,6 +251,11 @@ const ProcessMode = () => {
                     Catheter Trackability Testing Machine
                   </h1>
                   <p className="text-gray-600 text-sm mt-1">Process Mode - Real-time Monitoring</p>
+                  {selectedConfig && (
+                    <p className="text-blue-600 text-sm mt-1 font-medium">
+                      Using configuration: {selectedConfig.configName}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -188,7 +274,7 @@ const ProcessMode = () => {
               
               <button
                 onClick={toggleConnection}
-                className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 shadow-lg shadow-red-500/25 text-white"
+                className="p-3 rounded-xl bg-gradient极-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all transform hover:scale-105 shadow-lg shadow-red-500/25 text-white"
               >
                 <Power className="w-6 h-6" />
               </button>
@@ -202,7 +288,7 @@ const ProcessMode = () => {
         {/* Left Panel - Camera Feed */}
         <section className="flex-1 p-6">
           <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 h-full shadow-xl shadow-gray-200/50">
-            <div className="p-6 border-b border-gray-200/80">
+            <div className="p极 border-b border-gray-200/80">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
@@ -279,8 +365,8 @@ const ProcessMode = () => {
 
             <div className="bg-white/70 backdrop-blur-xl rounded-xl border border-gray-200/80 p-6 shadow-lg shadow-gray-200/30">
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="极 items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue极00 rounded-lg flex items-center justify-center shadow-sm">
                     <Gauge className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -291,7 +377,7 @@ const ProcessMode = () => {
                 <div className="w-16 h-16 relative">
                   <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
                     <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 极 0 -31.831"
                       fill="none"
                       stroke="rgb(229 231 235)"
                       strokeWidth="3"
@@ -345,7 +431,8 @@ const ProcessMode = () => {
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm ${
                     sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
                     sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                    sensorData.status === 'RESET' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
+                    sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
+                    sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
                     'bg-gradient-to-br from-gray-400 to-gray-500'
                   }`}>
                     <Activity className="w-5 h-5 text-white" />
@@ -355,14 +442,16 @@ const ProcessMode = () => {
                     <p className={`text-2xl font-bold ${
                       sensorData.status === 'RUNNING' ? 'text-green-600' :
                       sensorData.status === 'PAUSED' ? 'text-yellow-600' :
-                      sensorData.status === 'RESET' ? 'text-blue-600' : 'text-gray-600'
+                      sensorData.status === 'HOMING' ? 'text-purple-600' :
+                      sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
                     }`}>{sensorData.status}</p>
                   </div>
                 </div>
                 <div className={`w-4 h-4 rounded-full ${
                   sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
                   sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
-                  sensorData.status === 'RESET' ? 'bg-blue-500' : 'bg-gray-400'
+                  sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
+                  sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
                 }`}></div>
               </div>
             </div>
@@ -372,9 +461,9 @@ const ProcessMode = () => {
           <div className="flex space-x-4 justify-center">
             <button
               onClick={handleStart}
-              disabled={isProcessRunning && !isPaused}
+              disabled={shouldDisableButtons() || (isProcessRunning && !isPaused)}
               className={`group flex items-center space-x-3 px-8 py-4 rounded-xl font-bold transition-all transform hover:scale-105 ${
-                isProcessRunning && !isPaused
+                shouldDisableButtons() || (isProcessRunning && !isPaused)
                   ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                   : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
               }`}
@@ -386,9 +475,9 @@ const ProcessMode = () => {
             
             <button
               onClick={handlePause}
-              disabled={!isProcessRunning || isPaused}
+              disabled={shouldDisableButtons() || !isProcessRunning || isPaused}
               className={`group flex items-center space-x-3 px-8 py-4 rounded-xl font-bold transition-all transform hover:scale-105 ${
-                !isProcessRunning || isPaused
+                shouldDisableButtons() || !isProcessRunning || isPaused
                   ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                   : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
               }`}
@@ -400,7 +489,12 @@ const ProcessMode = () => {
             
             <button
               onClick={handleReset}
-              className="group flex items-center space-x-3 px-8 py-4 rounded-xl font-bold transition-all transform hover:scale-105 bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30"
+              disabled={!selectedConfig || isHoming}
+              className={`group flex items-center space-x-3 px-8 py-4 rounded-xl font-bold transition-all transform hover:scale-105 ${
+                !selectedConfig || isHoming
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
+              }`}
             >
               <RotateCcw className="w-6 h-6" />
               <span className="text-lg">RESET</span>
@@ -412,7 +506,7 @@ const ProcessMode = () => {
           <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 flex-1 shadow-xl shadow-gray-200/30">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Real-time Analytics</h2>
+                <h2 className="text-xl font-bold text-gray-极00">Real-time Analytics</h2>
                 <p className="text-gray-600 text-sm">Force & Distance vs Time</p>
               </div>
               <div className="flex items-center space-x-4">
