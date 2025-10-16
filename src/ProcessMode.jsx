@@ -141,15 +141,6 @@ const ProcessMode = () => {
     };
   }, [sensorData.distance, sensorData.force, isProcessRunning, isPaused]);
 
-    // Update main.js to handle PRS:RED feedback
-  // In the parseReceivedData function in main.js, add this case:
-  /*
-  if (data.includes('*PRS:RED#')) {
-    console.log('âœ… HOMING COMPLETE - READY');
-    mainWindow.webContents.send('process-response', 'ready');
-  }
-  */
-
   // Initialize camera feed
   useEffect(() => {
     const initCamera = async () => {
@@ -296,13 +287,6 @@ const ProcessMode = () => {
       console.error('Failed to reset process:', error);
     }
   };
-  
-  // const toggleConnection = () => {
-  //   // This could trigger reconnection logic
-  //   setIsConnected(!isConnected);
-  // };
-
-
 
   const shouldDisableButtons = () => {
     return isHoming || !selectedConfig;
@@ -321,7 +305,7 @@ const ProcessMode = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden">
+    <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
       {/* Info Modal */}
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -537,7 +521,7 @@ const ProcessMode = () => {
       </div>
 
       {/* Header */}
-      <header className="relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
+      <header className="flex-shrink-0 relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
         <div className="px-2 sm:px-4 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-6 min-w-0">
@@ -683,30 +667,30 @@ const ProcessMode = () => {
       </div>
 
       {/* Main Content */}
-      <main className="relative flex flex-col xl:flex-row h-[calc(100vh-80px)] sm:h-[calc(100vh-100px)] xl:h-[calc(100vh-120px)] gap-2 sm:gap-4 p-2 sm:p-4">
+      <main className="relative flex flex-col xl:flex-row flex-1 gap-2 sm:gap-4 p-2 sm:p-4 min-h-0 overflow-hidden">
         {/* Left Panel - Camera Feed and Graph */}
-        <section className="flex-1 flex flex-col gap-2 sm:gap-6 min-w-0">
+        <section className="flex-1 flex flex-col gap-2 sm:gap-4 min-w-0 min-h-0">
           {/* Camera Feed - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 h-[45%]">
-            <div className="p-4 border-b border-gray-200/80">
+          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 flex-[0_0_40%] min-h-0">
+            <div className="p-3 border-b border-gray-200/80">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Camera className="w-5 h-5 text-white" />
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <Camera className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">Live Camera Feed</h2>
-                    <p className="text-gray-600 text-sm">Real-time Machine Vision</p>
+                    <h2 className="text-lg font-bold text-gray-900">Live Camera Feed</h2>
+                    <p className="text-gray-600 text-xs">Real-time Machine Vision</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-                  <span className="text-red-600 text-sm font-medium">LIVE</span>
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
+                  <span className="text-red-600 text-xs font-medium">LIVE</span>
                 </div>
               </div>
             </div>
             
-            <div className="p-6 h-[calc(100%-88px)]">
+            <div className="p-4 h-[calc(100%-60px)]">
               <div className="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 shadow-inner">
                 <video
                   ref={videoRef}
@@ -716,7 +700,7 @@ const ProcessMode = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent pointer-events-none"></div>
-                <div className="absolute top-4 left-4 flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm">
+                <div className="absolute top-3 left-3 flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow-sm">
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                   <span className="text-gray-900 text-xs font-medium">LIVE</span>
                 </div>
@@ -725,10 +709,10 @@ const ProcessMode = () => {
           </div>
 
           {/* Real-time Chart with Sensor Data on Small Screens */}
-          <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-6 shadow-xl shadow-gray-200/50 min-h-0 flex flex-col">
-            <div className="mb-2 sm:mb-4 flex-shrink-0">
-              <h3 className="text-base sm:text-xl font-bold text-gray-900">Real-time Analytics</h3>
-              <p className="text-gray-600 text-xs sm:text-sm hidden sm:block">Force & Distance vs Time</p>
+          <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-xl shadow-gray-200/50 min-h-0 flex flex-col">
+            <div className="mb-2 sm:mb-3 flex-shrink-0">
+              <h3 className="text-base sm:text-lg font-bold text-gray-900">Real-time Analytics</h3>
+              <p className="text-gray-600 text-xs hidden sm:block">Force & Distance vs Time</p>
             </div>
             
             {/* Sensor Data - Only visible on small screens */}
@@ -797,21 +781,22 @@ const ProcessMode = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart 
                   data={chartData} 
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 25 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.7} />
                   <XAxis 
                     dataKey="time" 
                     stroke="#6b7280"
-                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
                     axisLine={{ stroke: '#9ca3af' }}
-                    label={{ value: 'Time (s)', position: 'insideBottom', offset: -5 }}
+                    label={{ value: 'Time (s)', position: 'insideBottom', offset: -3, fontSize: 11 }}
                   />
                   <YAxis 
                     stroke="#6b7280"
-                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tick={{ fill: '#6b7280', fontSize: 11 }}
                     axisLine={{ stroke: '#9ca3af' }}
-                    label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft' }}
+                    width={40}
+                    label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft', fontSize: 11 }}
                   />
                   <Tooltip 
                     contentStyle={{
@@ -820,27 +805,26 @@ const ProcessMode = () => {
                       borderRadius: '12px',
                       color: '#1f2937',
                       boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                      backdropFilter: 'blur(12px)'
+                      backdropFilter: 'blur(10px)'
                     }}
                   />
-                  {/* <Legend /> */}
                   <Line 
                     type="monotone" 
                     dataKey="force" 
                     stroke="#3b82f6" 
-                    strokeWidth={3}
+                    strokeWidth={2.5}
                     dot={false}
                     name="Force (N)"
-                    activeDot={{ r: 6, fill: '#3b82f6' }}
+                    activeDot={{ r: 5, fill: '#3b82f6' }}
                   />
                   <Line 
                     type="monotone" 
                     dataKey="distance" 
                     stroke="#22c55e" 
-                    strokeWidth={3}
+                    strokeWidth={2.5}
                     dot={false}
                     name="Distance (mm)"
-                    activeDot={{ r: 6, fill: '#22c55e' }}
+                    activeDot={{ r: 5, fill: '#22c55e' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -849,106 +833,106 @@ const ProcessMode = () => {
         </section>
 
         {/* Right Panel - Configuration and Sensor Data */}
-        <section className="w-full xl:w-[800px] flex flex-col gap-2 sm:gap-6">
+        <section className="w-full xl:w-[400px] 2xl:w-[450px] flex flex-col gap-2 sm:gap-3 pb-20 xl:pb-0 min-h-0">
           {/* Active Configuration Parameters - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 shadow-xl shadow-gray-200/50">
+          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-shrink-0">
             <div className="mb-2">
-              <h3 className="text-xl font-bold text-gray-900">Active Configuration</h3>
-              <p className="text-gray-600 text-sm">Current process parameters</p>
+              <h3 className="text-lg font-bold text-gray-900">Active Configuration</h3>
+              <p className="text-gray-600 text-xs">Current process parameters</p>
             </div>
             
             {selectedConfig ? (
-              <div className="space-y-3">
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200/50">
-                  <p className="text-gray-600 text-sm mb-1">Configuration Name</p>
-                  <p className="text-lg font-bold text-blue-700">{selectedConfig.configName}</p>
+              <div className="space-y-2.5">
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
+                  <p className="text-gray-600 text-xs mb-0.5">Configuration Name</p>
+                  <p className="text-base font-bold text-blue-700">{selectedConfig.configName}</p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200/50">
-                    <p className="text-gray-600 text-sm mb-1">Distance</p>
-                    <p className="text-xl font-bold text-green-700">{selectedConfig.distance} mm</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
+                    <p className="text-gray-600 text-xs mb-0.5">Distance</p>
+                    <p className="text-base font-bold text-green-700">{selectedConfig.distance} mm</p>
                   </div>
                   
-                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 rounded-xl border border-cyan-200/50">
-                    <p className="text-gray-600 text-sm mb-1">Peak Force</p>
-                    <p className="text-xl font-bold text-blue-700">{selectedConfig.peakForce} N</p>
+                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
+                    <p className="text-gray-600 text-xs mb-0.5">Peak Force</p>
+                    <p className="text-base font-bold text-blue-700">{selectedConfig.peakForce} N</p>
                   </div>
                   
-                  <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-xl border border-orange-200/50">
-                    <p className="text-gray-600 text-sm mb-1">Temperature</p>
-                    <p className="text-xl font-bold text-orange-700">{selectedConfig.temperature}°C</p>
+                  <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                    <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
+                    <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-xl">
-                <p className="text-yellow-800 font-medium">⚠️ No configuration selected</p>
-                <p className="text-yellow-700 text-sm mt-1">Please load a configuration to proceed</p>
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
+                <p className="text-yellow-800 font-medium text-sm">⚠️ No configuration selected</p>
+                <p className="text-yellow-700 text-xs mt-1">Please load a configuration to proceed</p>
               </div>
             )}
           </div>
 
           {/* Real-time Sensor Data - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 shadow-xl shadow-gray-200/50">
-            <div className="mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Real-time Sensors</h3>
-              <p className="text-gray-600 text-sm">Live monitoring data</p>
+          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-1 min-h-0">
+            <div className="mb-3">
+              <h3 className="text-lg font-bold text-gray-900">Real-time Sensors</h3>
+              <p className="text-gray-600 text-xs">Live monitoring data</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Thermometer className="w-5 h-5 text-white" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <Thermometer className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-gray-600 text-sm font-medium">Temperature</p>
+                  <p className="text-gray-600 text-xs font-medium">Temperature</p>
                 </div>
-                <p className="text-2xl font-bold text-orange-600">{sensorData.temperature}°C</p>
+                <p className="text-xl font-bold text-orange-600">{sensorData.temperature}°C</p>
               </div>
 
-              <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Gauge className="w-5 h-5 text-white" />
+              <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <Gauge className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-gray-600 text-sm font-medium">Force</p>
+                  <p className="text-gray-600 text-xs font-medium">Force</p>
                 </div>
-                <p className="text-2xl font-bold text-blue-600">{sensorData.force} N</p>
+                <p className="text-xl font-bold text-blue-600">{sensorData.force} N</p>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Ruler className="w-5 h-5 text-white" />
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
+                    <Ruler className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-gray-600 text-sm font-medium">Distance</p>
+                  <p className="text-gray-600 text-xs font-medium">Distance</p>
                 </div>
-                <p className="text-2xl font-bold text-green-600">{sensorData.distance} mm</p>
+                <p className="text-xl font-bold text-green-600">{sensorData.distance} mm</p>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm ${
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
                       sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
                       sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
                       sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
                       sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
                       'bg-gradient-to-br from-gray-400 to-gray-500'
                     }`}>
-                      <Activity className="w-5 h-5 text-white" />
+                      <Activity className="w-4 h-4 text-white" />
                     </div>
-                    <p className="text-gray-600 text-sm font-medium">Status</p>
+                    <p className="text-gray-600 text-xs font-medium">Status</p>
                   </div>
-                  <div className={`w-3 h-3 rounded-full ${
+                  <div className={`w-2.5 h-2.5 rounded-full ${
                     sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
                     sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
                     sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
                     sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
                   }`}></div>
                 </div>
-                <p className={`text-2xl font-bold ${
+                <p className={`text-xl font-bold ${
                   sensorData.status === 'RUNNING' ? 'text-green-600' :
                   sensorData.status === 'PAUSED' ? 'text-yellow-600' :
                   sensorData.status === 'HOMING' ? 'text-purple-600' :
@@ -959,17 +943,17 @@ const ProcessMode = () => {
           </div>
 
           {/* Control Buttons - Now fixed at bottom on small screens */}
-          <div className="xl:relative fixed bottom-0 left-0 right-0 bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 xl:p-6 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20">
+          <div className="xl:relative fixed bottom-0 left-0 right-0 bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0">
             <div className="mb-2 hidden xl:block">
-              <h3 className="text-xl font-bold text-gray-900">Process Controls</h3>
-              <p className="text-gray-600 text-sm">Manage process execution</p>
+              <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
+              <p className="text-gray-600 text-xs">Manage process execution</p>
             </div>
             
             <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
               <button
                 onClick={handleStart}
                 disabled={shouldDisableButtons() || (isProcessRunning && !isPaused)}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
                   shouldDisableButtons() || (isProcessRunning && !isPaused)
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
@@ -982,7 +966,7 @@ const ProcessMode = () => {
               <button
                 onClick={handlePause}
                 disabled={shouldDisableButtons() || !isProcessRunning || isPaused}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
                   shouldDisableButtons() || !isProcessRunning || isPaused
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
@@ -995,7 +979,7 @@ const ProcessMode = () => {
               <button
                 onClick={handleReset}
                 disabled={!selectedConfig || isHoming}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
                   !selectedConfig || isHoming
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'

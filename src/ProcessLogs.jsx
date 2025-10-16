@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, AlertCircle, ChevronDown, FileText, X, Trash2, Calendar, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, ChevronDown, FileText, X, Trash2, Calendar, Clock, TrendingUp, Info } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,7 @@ const ProcessLogs = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showSerialError, setShowSerialError] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Mock process log data - Replace with actual file reading logic
   const mockLogFiles = [
@@ -190,7 +191,7 @@ const ProcessLogs = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -203,9 +204,29 @@ const ProcessLogs = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Process Logs</h1>
           </div>
           
-          <button className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200">
-            <Power className="w-6 h-6" />
-          </button>
+          <div className="flex items-center space-x-2 lg:space-x-3">
+              {/* Help Button */}
+              <button 
+                onClick={() => setShowHelpModal(true)}
+                className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              >
+                <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+              </button>
+            <button 
+              onClick={() => {
+                const confirmed = window.confirm("Are you sure you want to exit?");
+                if (confirmed) {
+                  window.close();
+                }
+              }}
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
+                <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Serial Port Error
@@ -449,7 +470,7 @@ const ProcessLogs = () => {
         </div>
 
         {/* Info Panel */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
+        {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
           <div className="flex items-start space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
               <AlertCircle className="w-5 h-5 text-blue-600" />
@@ -465,7 +486,56 @@ const ProcessLogs = () => {
               </ul>
             </div>
           </div>
-        </div>
+        </div> */}
+        {showHelpModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg lg:text-xl font-bold text-blue-900">Logging Information</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowHelpModal(false)}
+                    className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-blue-600" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-96">
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">
+                        <span className="font-semibold">Process logs are automatically generated. </span> 
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">
+                        Each log contains force, distance data and confguration details.
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">
+                        Deleted Logs cannot be revcovered. 
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          )}
       </div>
 
       {/* Delete Confirmation Modal */}
