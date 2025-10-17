@@ -27,6 +27,10 @@ const ProcessMode = () => {
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
+  
+  // CSV Logging state
+  const [isLogging, setIsLogging] = useState(false);
+  const lastLoggedDataRef = useRef({ time: null, distance: null, force: null });
 
   // Load selected configuration from localStorage
   useEffect(() => {
@@ -36,6 +40,75 @@ const ProcessMode = () => {
     }
   }, []);
 
+  // CSV Logging functions
+  const startCsvLogging = async () => {
+    if (!selectedConfig) {
+      console.error('No configuration selected for logging');
+      return;
+    }
+    
+    try {
+      console.log('🟡 Starting CSV logging with config:', selectedConfig);
+      const result = await window.serialAPI.startCsvLogging(selectedConfig);
+      if (result.success) {
+        setIsLogging(true);
+        console.log('✅ CSV logging started:', result.fileName);
+        lastLoggedDataRef.current = { time: null, distance: null, force: null };
+      } else {
+        console.error('❌ Failed to start CSV logging:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error starting CSV logging:', error);
+    }
+  };
+
+  const stopCsvLogging = async () => {
+    if (isLogging) {
+      try {
+        const result = await window.serialAPI.stopCsvLogging();
+        if (result.success) {
+          setIsLogging(false);
+          console.log('🟡 CSV logging stopped:', result.fileName);
+        }
+      } catch (error) {
+        console.error('Error stopping CSV logging:', error);
+      }
+    }
+  };
+
+  const logSensorData = async (time, distance, force) => {
+    const timeNum = parseFloat(time);
+    const distNum = parseFloat(distance);
+    const forceNum = parseFloat(force);
+    
+    if (isNaN(timeNum) || isNaN(distNum) || isNaN(forceNum) || 
+        distance === '--' || force === '--') {
+      return;
+    }
+    
+    // Prevent logging duplicate data points
+    if (lastLoggedDataRef.current.time === timeNum && 
+        lastLoggedDataRef.current.distance === distNum && 
+        lastLoggedDataRef.current.force === forceNum) {
+      return;
+    }
+    
+    try {
+      console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}N, isLogging=${isLogging}`);
+      
+      await window.serialAPI.logSensorData({
+        time: timeNum,
+        distance: distNum,
+        force: forceNum
+      });
+      
+      lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
+      console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}N`);
+    } catch (error) {
+      console.error('❌ Error logging sensor data:', error);
+    }
+  };
+
   // Setup serial communication listeners
   useEffect(() => {
     const handleTemperatureUpdate = (temp) => {
@@ -43,33 +116,44 @@ const ProcessMode = () => {
     };
 
     const handleForceUpdate = (force) => {
-      setSensorData(prev => ({ ...prev, force: force.toFixed(1) }));
+      const currentTime = (Date.now() - startTimeRef.current) / 1000;
+      const timeFormatted = parseFloat(currentTime.toFixed(1));
+      const forceFormatted = parseFloat(force.toFixed(1));
+      
+      setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
       
       // Add to chart data only when process is running or paused
       if (isProcessRunning || isPaused) {
-        const currentTime = (Date.now() - startTimeRef.current) / 1000;
         setChartData(prev => {
           const newData = [...prev, {
-            time: parseFloat(currentTime.toFixed(1)),
-            force: parseFloat(force.toFixed(1)),
+            time: timeFormatted,
+            force: forceFormatted,
             distance: parseFloat(sensorData.distance) || 0
           }];
           return newData;
         });
       }
+      
+      // Log data when process is running and not paused
+      if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
+        logSensorData(timeFormatted, sensorData.distance, forceFormatted);
+      }
     };
 
     const handleDistanceUpdate = (distance) => {
-      setSensorData(prev => ({ ...prev, distance: distance.toFixed(1) }));
+      const currentTime = (Date.now() - startTimeRef.current) / 1000;
+      const timeFormatted = parseFloat(currentTime.toFixed(1));
+      const distanceFormatted = parseFloat(distance.toFixed(1));
+      
+      setSensorData(prev => ({ ...prev, distance: distanceFormatted.toFixed(1) }));
       
       // Add to chart data only when process is running or paused
       if (isProcessRunning || isPaused) {
-        const currentTime = (Date.now() - startTimeRef.current) / 1000;
         setChartData(prev => {
           // Create new data point with both force and distance
           const newDataPoint = {
-            time: parseFloat(currentTime.toFixed(1)),
-            distance: parseFloat(distance.toFixed(1)),
+            time: timeFormatted,
+            distance: distanceFormatted,
             force: parseFloat(sensorData.force) || 0
           };
           
@@ -77,6 +161,11 @@ const ProcessMode = () => {
           const newData = [...prev, newDataPoint];
           return newData;
         });
+      }
+      
+      // Log data when process is running and not paused
+      if (isProcessRunning && !isPaused && sensorData.force !== '--') {
+        logSensorData(timeFormatted, distanceFormatted, sensorData.force);
       }
     };
 
@@ -90,31 +179,47 @@ const ProcessMode = () => {
           setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'RUNNING' }));
           startTimeRef.current = Date.now();
-          // Don't clear chart data here - we want to keep all data from start
+          
+          console.log('🟡 Process started, starting CSV logging...');
+          if (selectedConfig && window.serialAPI) {
+            startCsvLogging();
+          } else {
+            console.error('❌ Cannot start logging: missing config or serialAPI');
+          }
           break;
+          
         case 'paused':
           setIsPaused(true);
           setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
           break;
+          
         case 'homing': // Handle homing start
           setIsProcessRunning(false);
           setIsPaused(false);
           setIsHoming(true);
           setSensorData(prev => ({ ...prev, status: 'HOMING' }));
           break;
+          
         case 'ready': // Handle homing completion
           setIsHoming(false);
           setIsProcessRunning(false);
           setIsPaused(false);
           setSensorData(prev => ({ ...prev, status: 'READY' }));
+          
+          console.log('🟡 Process ready, stopping CSV logging...');
+          stopCsvLogging();
           break;
+          
         case 'reset': // Keep this for backward compatibility
           setIsProcessRunning(false);
           setIsPaused(false);
           setIsHoming(true);
           setChartData([]);
           setSensorData(prev => ({ ...prev, status: 'HOMING' }));
+          
+          console.log('🟡 Process reset, stopping CSV logging...');
+          stopCsvLogging();
           break;
       }
     };
@@ -139,7 +244,7 @@ const ProcessMode = () => {
       window.serialAPI.removeAllListeners('process-response');
       window.serialAPI.removeAllListeners('serial-error');
     };
-  }, [sensorData.distance, sensorData.force, isProcessRunning, isPaused]);
+  }, [sensorData.distance, sensorData.force, isProcessRunning, isPaused, selectedConfig]);
 
   // Initialize camera feed
   useEffect(() => {
@@ -283,6 +388,9 @@ const ProcessMode = () => {
         status: 'HOMING'
       }));
       setChartData([]);
+      
+      // Stop CSV logging when reset is pressed
+      stopCsvLogging();
     } catch (error) {
       console.error('Failed to reset process:', error);
     }

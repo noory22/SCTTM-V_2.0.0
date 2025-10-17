@@ -31,6 +31,14 @@ processPauseWithValues: (distance, temperature, peakForce) =>
 processResetWithValues: (distance, temperature, peakForce) =>
   ipcRenderer.invoke("process-reset-with-values", distance, temperature, peakForce),
 
+  // CSV Logging APIs
+  startCsvLogging: (configData) => ipcRenderer.invoke("start-csv-logging", configData),
+  logSensorData: (sensorData) => ipcRenderer.invoke("log-sensor-data", sensorData),
+  stopCsvLogging: () => ipcRenderer.invoke("stop-csv-logging"),
+  getLogFiles: () => ipcRenderer.invoke("get-log-files"),
+  readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
+  deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
+
   // Event listeners
   onData: (callback) =>
     ipcRenderer.on("serial-data", (event, data) => callback(data)),

@@ -14,100 +14,7 @@ const ProcessLogs = () => {
   const [showSerialError, setShowSerialError] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-
-  // Mock process log data - Replace with actual file reading logic
-  const mockLogFiles = [
-    {
-      id: 1,
-      filename: 'process_log_TestConfig1_2024-01-15_14-30-25.json',
-      displayName: 'Test Configuration 1',
-      date: '2024-01-15',
-      time: '14:30:25',
-      configData: {
-        configName: 'Test Configuration 1',
-        pathLength: '150.0',
-        temperature: '38.2',
-        force: '25.5'
-      },
-      processData: [
-        { distance: 0, force: 0, time: 0 },
-        { distance: 10, force: 5.2, time: 1000 },
-        { distance: 20, force: 12.8, time: 2000 },
-        { distance: 30, force: 18.5, time: 3000 },
-        { distance: 40, force: 22.1, time: 4000 },
-        { distance: 50, force: 25.5, time: 5000 },
-        { distance: 60, force: 23.8, time: 6000 },
-        { distance: 70, force: 20.2, time: 7000 },
-        { distance: 80, force: 15.9, time: 8000 },
-        { distance: 90, force: 10.3, time: 9000 },
-        { distance: 100, force: 5.1, time: 10000 },
-        { distance: 110, force: 2.8, time: 11000 },
-        { distance: 120, force: 1.2, time: 12000 },
-        { distance: 130, force: 0.5, time: 13000 },
-        { distance: 140, force: 0.2, time: 14000 },
-        { distance: 150, force: 0.1, time: 15000 }
-      ]
-    },
-    {
-      id: 2,
-      filename: 'process_log_ProductionSetup_2024-01-15_16-45-12.json',
-      displayName: 'Production Setup',
-      date: '2024-01-15',
-      time: '16:45:12',
-      configData: {
-        configName: 'Production Setup',
-        pathLength: '200.0',
-        temperature: '37.5',
-        force: '30.0'
-      },
-      processData: [
-        { distance: 0, force: 0, time: 0 },
-        { distance: 15, force: 8.5, time: 1500 },
-        { distance: 30, force: 16.2, time: 3000 },
-        { distance: 45, force: 22.8, time: 4500 },
-        { distance: 60, force: 27.5, time: 6000 },
-        { distance: 75, force: 30.0, time: 7500 },
-        { distance: 90, force: 28.3, time: 9000 },
-        { distance: 105, force: 25.1, time: 10500 },
-        { distance: 120, force: 21.4, time: 12000 },
-        { distance: 135, force: 17.2, time: 13500 },
-        { distance: 150, force: 12.8, time: 15000 },
-        { distance: 165, force: 8.9, time: 16500 },
-        { distance: 180, force: 5.3, time: 18000 },
-        { distance: 195, force: 2.1, time: 19500 },
-        { distance: 200, force: 0.8, time: 20000 }
-      ]
-    },
-    {
-      id: 3,
-      filename: 'process_log_DebugMode_2024-01-16_09-15-33.json',
-      displayName: 'Debug Mode Test',
-      date: '2024-01-16',
-      time: '09:15:33',
-      configData: {
-        configName: 'Debug Mode Test',
-        pathLength: '100.0',
-        temperature: '39.8',
-        force: '15.2'
-      },
-      processData: [
-        { distance: 0, force: 0, time: 0 },
-        { distance: 8, force: 3.2, time: 800 },
-        { distance: 16, force: 7.8, time: 1600 },
-        { distance: 24, force: 11.5, time: 2400 },
-        { distance: 32, force: 14.2, time: 3200 },
-        { distance: 40, force: 15.2, time: 4000 },
-        { distance: 48, force: 14.8, time: 4800 },
-        { distance: 56, force: 13.1, time: 5600 },
-        { distance: 64, force: 10.9, time: 6400 },
-        { distance: 72, force: 8.2, time: 7200 },
-        { distance: 80, force: 5.8, time: 8000 },
-        { distance: 88, force: 3.1, time: 8800 },
-        { distance: 96, force: 1.4, time: 9600 },
-        { distance: 100, force: 0.3, time: 10000 }
-      ]
-    }
-  ];
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
     loadLogFiles();
@@ -115,16 +22,68 @@ const ProcessLogs = () => {
 
   const loadLogFiles = async () => {
     try {
-      // In real implementation, you would read log files from file system
-      setLogFiles(mockLogFiles);
+      setIsLoading(true);
+      const logFiles = await window.serialAPI.getLogFiles();
+      setLogFiles(logFiles);
     } catch (error) {
       console.error('Error loading log files:', error);
+      alert('Error loading log files: ' + error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleLogSelection = (log) => {
-    setSelectedLog(log);
-    setShowDropdown(false);
+  const handleLogSelection = async (log) => {
+    try {
+      setIsLoading(true);
+      
+      // Read the actual CSV file data
+      const result = await window.serialAPI.readLogFile(log.filePath);
+      
+      if (result.success) {
+        // Extract configuration from CSV file headers
+        const configData = extractConfigFromCsv(result.rawData);
+        
+        setSelectedLog({
+          ...log,
+          processData: result.data,
+          configData: configData
+        });
+      } else {
+        alert('Error reading log file: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error selecting log:', error);
+      alert('Error reading log file');
+    } finally {
+      setIsLoading(false);
+      setShowDropdown(false);
+    }
+  };
+
+  // Helper function to extract config from CSV headers
+  const extractConfigFromCsv = (rawData) => {
+    const lines = rawData.split('\n');
+    const config = {
+      configName: 'Unknown',
+      distance: '--',
+      temperature: '--',
+      peakForce: '--'
+    };
+    
+    lines.forEach(line => {
+      if (line.startsWith('# Configuration:')) {
+        config.configName = line.replace('# Configuration:', '').trim();
+      } else if (line.startsWith('# Distance:')) {
+        config.distance = line.replace('# Distance:', '').replace('mm', '').trim();
+      } else if (line.startsWith('# Temperature:')) {
+        config.temperature = line.replace('# Temperature:', '').replace('°C', '').trim();
+      } else if (line.startsWith('# Peak Force:')) {
+        config.peakForce = line.replace('# Peak Force:', '').replace('N', '').trim();
+      }
+    });
+    
+    return config;
   };
 
   const handleDeleteLog = async (logToDelete = null) => {
@@ -134,20 +93,28 @@ const ProcessLogs = () => {
     setIsLoading(true);
     
     try {
-      // Simulate deletion process
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const result = await window.serialAPI.deleteLogFile(targetLog.filePath);
       
-      // Remove from log files
-      const updatedLogs = logFiles.filter(log => log.id !== targetLog.id);
-      setLogFiles(updatedLogs);
-      
-      // Reset selection if deleted log was selected
-      if (selectedLog && selectedLog.id === targetLog.id) {
-        setSelectedLog(null);
+      if (result.success) {
+        // Remove from log files
+        const updatedLogs = logFiles.filter(log => log.filename !== targetLog.filename);
+        setLogFiles(updatedLogs);
+        
+        // Reset selection if deleted log was selected
+        if (selectedLog && selectedLog.filename === targetLog.filename) {
+          setSelectedLog(null);
+        }
+        
+        setShowDeleteConfirm(false);
+        setShowSuccessMessage(true);
+        
+        // Auto hide success message after 2 seconds
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+        }, 2000);
+      } else {
+        alert('Error deleting log file: ' + result.error);
       }
-      
-      setShowDeleteConfirm(false);
-      alert('Log file deleted successfully!');
       
     } catch (error) {
       console.error('Error deleting log file:', error);
@@ -161,13 +128,22 @@ const ProcessLogs = () => {
     setIsLoading(true);
     
     try {
-      // Simulate deletion process
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Delete all log files one by one
+      const deletePromises = logFiles.map(log => 
+        window.serialAPI.deleteLogFile(log.filePath)
+      );
+      
+      await Promise.all(deletePromises);
       
       setLogFiles([]);
       setSelectedLog(null);
       setShowDeleteAllConfirm(false);
-      alert('All log files deleted successfully!');
+      setShowSuccessMessage(true);
+      
+      // Auto hide success message after 2 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 2000);
       
     } catch (error) {
       console.error('Error deleting all log files:', error);
@@ -190,7 +166,7 @@ const ProcessLogs = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+    <div className={`min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 ${(showDeleteConfirm || showDeleteAllConfirm || showSuccessMessage) ? 'backdrop-blur-sm' : ''}`}>
       <div className="w-full mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -203,8 +179,7 @@ const ProcessLogs = () => {
             </button>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Process Logs</h1>
           </div>
-          
-          <div className="flex items-center space-x-2 lg:space-x-3">
+           <div className="flex items-center space-x-2 lg:space-x-3">
               {/* Help Button */}
               <button 
                 onClick={() => setShowHelpModal(true)}
@@ -212,43 +187,22 @@ const ProcessLogs = () => {
               >
                 <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
               </button>
-            <button 
-              onClick={() => {
-                const confirmed = window.confirm("Are you sure you want to exit?");
-                if (confirmed) {
-                  window.close();
-                }
-              }}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
-                <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
-            </button>
+          <button 
+            onClick={() => {
+              const confirmed = window.confirm("Are you sure you want to exit?");
+              if (confirmed) {
+                window.close();
+              }
+            }}
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
+              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </button>
           </div>
         </div>
-
-        {/* Serial Port Error
-        {showSerialError && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
-                  <p className="text-red-600 text-sm mt-1">Serial port connection required for real-time logging.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowSerialError(false)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
@@ -280,7 +234,7 @@ const ProcessLogs = () => {
                     ) : (
                       logFiles.map((log) => (
                         <button
-                          key={log.id}
+                          key={log.filename}
                           onClick={() => handleLogSelection(log)}
                           className="w-full p-4 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors duration-150 focus:outline-none focus:bg-blue-50"
                         >
@@ -369,7 +323,7 @@ const ProcessLogs = () => {
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <TrendingUp className="w-5 h-5 text-blue-600" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-800">Force vs Distance Analysis</h2>
+                <h2 className="text-xl font-semibold text-slate-800">Force & Distance vs Time Analysis</h2>
               </div>
 
               {selectedLog ? (
@@ -378,15 +332,15 @@ const ProcessLogs = () => {
                     <LineChart data={selectedLog.processData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis 
-                        dataKey="distance" 
+                        dataKey="time" 
                         stroke="#64748b"
-                        label={{ value: 'Distance (mm)', position: 'insideBottom', offset: -10 }}
+                        label={{ value: 'Time (s)', position: 'insideBottom', offset: -10 }}
                       />
                       <YAxis 
                         stroke="#64748b"
-                        label={{ value: 'Force (N)', angle: -90, position: 'insideLeft' }}
+                        label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft' }}
                       />
-                      <Tooltip 
+                     <Tooltip 
                         contentStyle={{
                           backgroundColor: 'white',
                           border: '2px solid #e2e8f0',
@@ -394,20 +348,28 @@ const ProcessLogs = () => {
                           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                         }}
                         formatter={(value, name) => [
-                          `${value} ${name === 'force' ? 'N' : 'mm'}`,
-                          name === 'force' ? 'Force' : 'Distance'
+                          `${value} ${name === 'force' ? 'N' : name === 'distance' ? 'mm' : ''}`,
+                          name === 'force' ? 'Force' : name === 'distance' ? 'Distance' : ''
                         ]}
-                        labelFormatter={(label) => `Distance: ${label} mm`}
+                        labelFormatter={(label) => `Time: ${label} s`}
                       />
-                      {/* <Legend /> */}
                       <Line 
                         type="monotone" 
                         dataKey="force" 
                         stroke="#3b82f6" 
                         strokeWidth={3}
-                        dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                        dot={{ fill: '#3b82f6', strokeWidth: 1, r: 2 }}
                         activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
                         name="Force"
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="distance" 
+                        stroke="#22c55e" 
+                        strokeWidth={3}
+                        dot={{ fill: '#22c55e', strokeWidth: 1, r: 2 }}
+                        activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
+                        name="Distance"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -417,7 +379,7 @@ const ProcessLogs = () => {
                   <div className="text-center text-slate-500">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium">Select a log file to view analysis</p>
-                    <p className="text-sm mt-2">Force vs Distance graph will be displayed here</p>
+                    <p className="text-sm mt-2">Force & Distance vs Time graph will be displayed here</p>
                   </div>
                 </div>
               )}
@@ -446,20 +408,20 @@ const ProcessLogs = () => {
                 </div>
                 
                 <div className="bg-slate-50 rounded-xl p-4">
-                  <p className="text-slate-600 text-sm font-medium mb-1">Path Length</p>
+                  <p className="text-slate-600 text-sm font-medium mb-1">Distance</p>
                   <div className="flex items-center space-x-2">
                     <p className="text-slate-800 font-bold text-lg">
-                      {selectedLog ? selectedLog.configData.pathLength : '--'}
+                      {selectedLog ? selectedLog.configData.distance : '--'}
                     </p>
                     <span className="text-slate-600 text-sm">mm</span>
                   </div>
                 </div>
                 
                 <div className="bg-slate-50 rounded-xl p-4">
-                  <p className="text-slate-600 text-sm font-medium mb-1">Force</p>
+                  <p className="text-slate-600 text-sm font-medium mb-1">Peak Force</p>
                   <div className="flex items-center space-x-2">
                     <p className="text-slate-800 font-bold text-lg">
-                      {selectedLog ? selectedLog.configData.force : '--'}
+                      {selectedLog ? selectedLog.configData.peakForce : '--'}
                     </p>
                     <span className="text-slate-600 text-sm">N</span>
                   </div>
@@ -468,79 +430,11 @@ const ProcessLogs = () => {
             </div>
           </div>
         </div>
-
-        {/* Info Panel */}
-        {/* <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">Process Logs Information</h3>
-              <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Process logs are automatically generated during catheter testing procedures</li>
-                <li>• Each log contains force measurements, distance data, and configuration details</li>
-                <li>• Graphs show the relationship between applied force and catheter distance</li>
-                <li>• Log files can be exported for further analysis or regulatory compliance</li>
-                <li>• Deleted logs cannot be recovered - ensure you have backups of important data</li>
-              </ul>
-            </div>
-          </div>
-        </div> */}
-        {showHelpModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-                    </div>
-                    <h3 className="text-lg lg:text-xl font-bold text-blue-900">Logging Information</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowHelpModal(false)}
-                    className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5 text-blue-600" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-6 overflow-y-auto max-h-96">
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <p className="text-blue-800 text-sm lg:text-base">
-                        <span className="font-semibold">Process logs are automatically generated. </span> 
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <p className="text-blue-800 text-sm lg:text-base">
-                        Each log contains force, distance data and confguration details.
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                      <p className="text-blue-800 text-sm lg:text-base">
-                        Deleted Logs cannot be revcovered. 
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
       </div>
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-red-100 rounded-full">
@@ -583,7 +477,7 @@ const ProcessLogs = () => {
 
       {/* Delete All Confirmation Modal */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-3 bg-red-100 rounded-full">
@@ -619,6 +513,82 @@ const ProcessLogs = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message Modal */}
+      {showSuccessMessage && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-3 bg-green-100 rounded-full">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">Success!</h3>
+            </div>
+            
+            <p className="text-slate-600 mb-6">Log file deleted successfully!</p>
+            
+            <button
+              onClick={() => setShowSuccessMessage(false)}
+              className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Info className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-lg lg:text-xl font-bold text-blue-900">Configuration Guidelines</h3>
+                </div>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-blue-600" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-96">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Process  Logs are automatically generated. </span>
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      Each log contains force, distance data and confguration details. 
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      Deleted Logs cannot be revcovered.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
