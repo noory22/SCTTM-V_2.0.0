@@ -351,14 +351,20 @@ function parseReceivedData(data) {
 
     
     // Parse force data: *FRC:xxxxxx#
-    if (data.includes('*FRC:') && data.includes('#')) {
-      const forcePattern = /\*FRC:(\d+(?:\.\d+)?)#/g;
+    if (data.includes('*FRC:')) {
+      // FIXED: Added -? to handle negative numbers
+      const forcePattern = /\*FRC:(-?\d+(?:\.\d+)?)/g;
       let forceMatch;
       
       while ((forceMatch = forcePattern.exec(data)) !== null) {
         const force = parseFloat(forceMatch[1]);
-        console.log(`💪 FORCE UPDATE: ${force}N`);
-        mainWindow.webContents.send('force-update', force);
+        if (!isNaN(force)) {
+          console.log(`💪 FORCE UPDATE: ${force}N`);
+          console.log(`📡 Sending to renderer: force-update event with ${force}`);
+          mainWindow.webContents.send('force-update', force);
+        } else {
+          console.log(`❌ Invalid force value: ${forceMatch[1]}`);
+        }
       }
     }
     

@@ -108,14 +108,15 @@ const ProcessMode = () => {
       console.error('❌ Error logging sensor data:', error);
     }
   };
-
   // Setup serial communication listeners
   useEffect(() => {
+    console.log('🔄 Setting up serial communication listeners...'); // Debug log
     const handleTemperatureUpdate = (temp) => {
-      setSensorData(prev => ({ ...prev, temperature: temp.toFixed(1) }));
+      setSensorData(prev => ({ ...prev, temperature: temp }));
     };
 
     const handleForceUpdate = (force) => {
+      console.log('📱 ProcessMode.jsx received force:', force);
       const currentTime = (Date.now() - startTimeRef.current) / 1000;
       const timeFormatted = parseFloat(currentTime.toFixed(1));
       const forceFormatted = parseFloat(force.toFixed(1));
@@ -145,7 +146,7 @@ const ProcessMode = () => {
       const timeFormatted = parseFloat(currentTime.toFixed(1));
       const distanceFormatted = parseFloat(distance.toFixed(1));
       
-      setSensorData(prev => ({ ...prev, distance: distanceFormatted.toFixed(1) }));
+      setSensorData(prev => ({ ...prev, distance: distanceFormatted }));
       
       // Add to chart data only when process is running or paused
       if (isProcessRunning || isPaused) {
@@ -490,10 +491,6 @@ const ProcessMode = () => {
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span><strong>Force Sensor:</strong> Verify force reading is at baseline (near 0 N)</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold mt-1">•</span>
-                    <span><strong>Distance Sensor:</strong> Confirm distance sensor is responding</span>
                   </li>
                 </ul>
               </div>
