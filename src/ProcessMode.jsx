@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Play, Pause, RotateCcw, Power, Camera, ArrowLeft, Usb, Info, X, Activity, Thermometer, Gauge, Ruler } from 'lucide-react';
+import { Play, Pause, RotateCcw, Power, Camera, ArrowLeft, Usb, Info, X, Activity, Thermometer, Gauge, Ruler, Flame } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProcessMode = () => {
@@ -28,6 +28,17 @@ const ProcessMode = () => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
   
+  // Temperature Control State
+  const [temperatureStatus, setTemperatureStatus] = useState({
+    isHeatingRequired: false,
+    isHeatingComplete: false,
+    showHeaterDialog: false,
+    dialogMessage: '',
+    dialogType: '' ,// 'heating-required' or 'heating-complete'
+    heaterButtonDisabled: false,
+    targetTemperature: null
+  });
+
   // CSV Logging state
   const [isLogging, setIsLogging] = useState(false);
   const lastLoggedDataRef = useRef({ time: null, distance: null, force: null });
@@ -39,6 +50,50 @@ const ProcessMode = () => {
       setSelectedConfig(JSON.parse(config));
     }
   }, []);
+
+  //-----------------------------------------------------------------//
+  // Temperature monitoring effect
+  useEffect(() => {
+    if (!selectedConfig || sensorData.temperature === '--') return;
+
+    const currentTemp = parseFloat(sensorData.temperature);
+    const targetTemp = parseFloat(selectedConfig.temperature);
+
+    if (isNaN(currentTemp) || isNaN(targetTemp)) return;
+
+    console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C`);
+
+    if (currentTemp < targetTemp) {
+      // Temperature is below target
+      if (!temperatureStatus.isHeatingRequired) {
+        setTemperatureStatus({
+          isHeatingRequired: true,
+          isHeatingComplete: false,
+          showHeaterDialog: true,
+          dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
+          dialogType: 'heating-required',
+          heaterButtonDisabled: false,
+          targetTemperature: targetTemp
+        });
+        console.log('🔥 Heating required - showing dialog');
+      }
+    } else {
+      // Temperature reached or exceeded target
+      if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
+        setTemperatureStatus({
+          isHeatingRequired: false,
+          isHeatingComplete: true,
+          showHeaterDialog: true,
+          dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
+          dialogType: 'heating-complete',
+          heaterButtonDisabled: false,
+          targetTemperature: targetTemp
+        });
+        console.log('✅ Heating complete - showing turn off dialog');
+      }
+    }
+  }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete]);
+  //-----------------------------------------------------------------//
 
   // CSV Logging functions
   const startCsvLogging = async () => {
@@ -108,6 +163,81 @@ const ProcessMode = () => {
       console.error('❌ Error logging sensor data:', error);
     }
   };
+  //---------------------------------------------------------------------------------//
+  // Heater Control Functions
+  const handleHeaterOn = async () => {
+    try {
+      // Disable button immediately
+      setTemperatureStatus(prev => ({
+        ...prev,
+        heaterButtonDisabled: true
+      }));
+      
+      console.log('🔥 Turning heater ON...');
+      await window.serialAPI.controlHeater('on');
+      console.log('✅ Heater ON command sent');
+      
+      // Re-enable button after 2 seconds to prevent spamming
+      // setTimeout(() => {
+      //   setTemperatureStatus(prev => ({
+      //     ...prev,
+      //     heaterButtonDisabled: false
+      //   }));
+      // }, 2000);
+      
+    } catch (error) {
+      console.error('❌ Failed to turn heater ON:', error);
+      // // Re-enable button on error
+      // setTemperatureStatus(prev => ({
+      //   ...prev,
+      //   heaterButtonDisabled: false
+      // }));
+    }
+  };
+
+  const handleHeaterOff = async () => {
+    try {
+      // Disable button immediately
+      setTemperatureStatus(prev => ({
+        ...prev,
+        heaterButtonDisabled: true
+      }));
+      
+      console.log('🔥 Turning heater OFF...');
+      await window.serialAPI.controlHeater('off');
+      
+      // Close dialog and enable start button
+      setTemperatureStatus({
+        isHeatingRequired: false,
+        isHeatingComplete: false,
+        showHeaterDialog: false,
+        dialogMessage: '',
+        dialogType: '',
+        heaterButtonDisabled: false,
+        targetTemperature: null
+      });
+      console.log('✅ Heater OFF command sent, dialog closed');
+      
+    } catch (error) {
+      console.error('❌ Failed to turn heater OFF:', error);
+      // Re-enable button on error
+      setTemperatureStatus(prev => ({
+        ...prev,
+        heaterButtonDisabled: false
+      }));
+    }
+  };
+
+  const closeHeaterDialog = () => {
+    // Only allow closing for heating-complete dialog, not for heating-required
+    if (temperatureStatus.dialogType === 'heating-complete') {
+      setTemperatureStatus(prev => ({
+        ...prev,
+        showHeaterDialog: false
+      }));
+    }
+  };
+  //---------------------------------------------------------------------------------//
   // Setup serial communication listeners
   useEffect(() => {
     console.log('🔄 Setting up serial communication listeners...'); // Debug log
@@ -140,6 +270,51 @@ const ProcessMode = () => {
         logSensorData(timeFormatted, sensorData.distance, forceFormatted);
       }
     };
+    // const handleForceUpdate = (force) => {
+    //   console.log('📱 ProcessMode.jsx received force:', force);
+    //   const currentTime = (Date.now() - startTimeRef.current) / 1000;
+    //   const timeFormatted = parseFloat(currentTime.toFixed(1));
+    //   const forceFormatted = parseFloat(force.toFixed(1));
+      
+    //   setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
+      
+    //   // NEW: Auto-pause check - Add this right after setting sensor data
+    //   if (selectedConfig && isProcessRunning && !isPaused) {
+    //     const peakForce = parseFloat(selectedConfig.peakForce);
+    //     if (!isNaN(forceFormatted) && !isNaN(peakForce) && forceFormatted >= peakForce) {
+    //       console.log(`🛑 Peak force safety limit reached: ${forceFormatted}N >= ${peakForce}N`);
+    //       console.log('🟡 Auto-pausing process for safety...');
+          
+    //       // Use the pause logic directly instead of handlePause to avoid command formatting issues
+    //       const distanceVal = formatCommandValue(selectedConfig.distance);
+    //       const tempVal = formatCommandValue(selectedConfig.temperature);
+    //       const forceVal = formatCommandValue(selectedConfig.peakForce);
+          
+    //       const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
+    //       console.log('Auto-pause command:', command);
+          
+    //       window.serialAPI.sendData(command);
+    //       return; // Stop further processing
+    //     }
+    //   }
+      
+    //   // Add to chart data only when process is running or paused
+    //   if (isProcessRunning || isPaused) {
+    //     setChartData(prev => {
+    //       const newData = [...prev, {
+    //         time: timeFormatted,
+    //         force: forceFormatted,
+    //         distance: parseFloat(sensorData.distance) || 0
+    //       }];
+    //       return newData;
+    //     });
+    //   }
+      
+    //   // Log data when process is running and not paused
+    //   if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
+    //     logSensorData(timeFormatted, sensorData.distance, forceFormatted);
+    //   }
+    // };
 
     const handleDistanceUpdate = (distance) => {
       const currentTime = (Date.now() - startTimeRef.current) / 1000;
@@ -340,6 +515,11 @@ const ProcessMode = () => {
       console.error('No configuration selected');
       return;
     }
+    // Check if heating is required
+    if (temperatureStatus.isHeatingRequired) {
+      console.log('❌ Cannot start process - heating required');
+      return;
+    }
 
     try {
       const distanceVal = formatCommandValue(selectedConfig.distance);
@@ -389,6 +569,15 @@ const ProcessMode = () => {
         status: 'HOMING'
       }));
       setChartData([]);
+
+      // Reset temperature status
+      setTemperatureStatus({
+        isHeatingRequired: false,
+        isHeatingComplete: false,
+        showHeaterDialog: false,
+        dialogMessage: '',
+        dialogType: ''
+      });
       
       // Stop CSV logging when reset is pressed
       stopCsvLogging();
@@ -415,6 +604,138 @@ const ProcessMode = () => {
 
   return (
     <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
+      {/* Heater Control Modal */}
+      {temperatureStatus.showHeaterDialog && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200/80">
+            <div className={`p-6 rounded-t-2xl flex items-center justify-between ${
+              temperatureStatus.dialogType === 'heating-required' 
+                ? 'bg-gradient-to-r from-orange-500 to-red-500' 
+                : 'bg-gradient-to-r from-green-500 to-emerald-500'
+            }`}>
+              <div className="flex items-center space-x-3">
+                <Flame className="w-6 h-6 text-white" />
+                <h2 className="text-xl font-bold text-white">
+                  {temperatureStatus.dialogType === 'heating-required' ? 'Heating Required' : 'Heating Complete'}
+                </h2>
+              </div>
+              {temperatureStatus.dialogType === 'heating-complete' && (
+                <button
+                  onClick={closeHeaterDialog}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-all"
+                >
+                  <X className="w-6 h-6 text-white" />
+                </button>
+              )}
+            </div>
+            
+            <div className="p-6">
+              {/* Temperature Display */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Real-time Temperature</p>
+                    <div className="flex items-center justify-center space-x-2">
+                      <Thermometer className="w-5 h-5 text-blue-600" />
+                      <p className="text-2xl font-bold text-blue-700">{sensorData.temperature}°C</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Target Temperature</p>
+                    <div className="flex items-center justify-center space-x-2">
+                      <Flame className="w-5 h-5 text-orange-600" />
+                      <p className="text-2xl font-bold text-orange-700">
+                        {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Progress indicator */}
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>0°C</span>
+                    <span>Progress</span>
+                    <span>{temperatureStatus.targetTemperature || selectedConfig?.temperature}°C</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-1000 ${
+                        temperatureStatus.dialogType === 'heating-required' 
+                          ? 'bg-orange-500' 
+                          : 'bg-green-500'
+                      }`}
+                      style={{ 
+                        width: `${Math.min(100, (parseFloat(sensorData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Message */}
+              <div className={`p-4 rounded-xl mb-4 ${
+                temperatureStatus.dialogType === 'heating-required' 
+                  ? 'bg-orange-50 border border-orange-200' 
+                  : 'bg-green-50 border border-green-200'
+              }`}>
+                <p className={`font-medium text-center ${
+                  temperatureStatus.dialogType === 'heating-required' ? 'text-orange-800' : 'text-green-800'
+                }`}>
+                  {temperatureStatus.dialogMessage}
+                </p>
+              </div>
+              
+              {/* Action Button */}
+              <div className="flex space-x-3">
+                {temperatureStatus.dialogType === 'heating-required' ? (
+                  <button
+                    onClick={handleHeaterOn}
+                    disabled={temperatureStatus.heaterButtonDisabled}
+                    className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
+                      temperatureStatus.heaterButtonDisabled
+                        ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                        : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
+                    }`}
+                  >
+                    <Flame className="w-5 h-5" />
+                    <span>
+                      {temperatureStatus.heaterButtonDisabled ? 'Turning ON...' : 'Turn Heater ON'}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleHeaterOff}
+                    disabled={temperatureStatus.heaterButtonDisabled}
+                    className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
+                      temperatureStatus.heaterButtonDisabled
+                        ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg'
+                    }`}
+                  >
+                    <Flame className="w-5 h-5" />
+                    <span>
+                      {temperatureStatus.heaterButtonDisabled ? 'Turning OFF...' : 'Turn Heater OFF'}
+                    </span>
+                  </button>
+                )}
+              </div>
+              
+              {/* Status Message */}
+              {temperatureStatus.dialogType === 'heating-required' && (
+                <div className="mt-3 text-center">
+                  <p className="text-orange-600 text-sm font-medium">
+                    ⚠️ Start button will be enabled when temperature reaches target
+                  </p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Current: {sensorData.temperature}°C / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Info Modal */}
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -827,7 +1148,7 @@ const ProcessMode = () => {
                   <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
                     <Thermometer className="w-3 h-3 text-white" />
                   </div>
-                  <p className="text-gray-600 text-xs font-medium">Temp</p>
+                  <p className="text-gray-600 text-xs font-medium">Temperature</p>
                 </div>
                 <p className="text-sm font-bold text-orange-600">{sensorData.temperature}°C</p>
               </div>
@@ -847,7 +1168,7 @@ const ProcessMode = () => {
                   <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-md flex items-center justify-center">
                     <Ruler className="w-3 h-3 text-white" />
                   </div>
-                  <p className="text-gray-600 text-xs font-medium">Dist</p>
+                  <p className="text-gray-600 text-xs font-medium">Distance</p>
                 </div>
                 <p className="text-sm font-bold text-green-600">{sensorData.distance} mm</p>
               </div>

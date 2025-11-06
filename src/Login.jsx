@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from './assets/Logo.png';
+import {Power} from 'lucide-react';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -32,36 +33,34 @@ const Login = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-100 to-slate-300">
       {/* Header with logo and error message */}
       <header className="flex justify-between items-center px-8 py-4 bg-white shadow-lg relative z-10">
-    <div className="flex items-center">
-      <img 
-        src={Logo} 
-        alt="Revive Medical Technologies" 
-        className="h-12 w-auto object-contain"
-        onError={(e) => {
-          e.target.style.display = 'none';
-          e.target.nextSibling.style.display = 'flex';
-        }}
-      />
-      {/* <div className="hidden flex-col items-start">
-        <div className="text-2xl font-bold text-blue-600 tracking-wider">REVIVE</div>
-        <div className="text-xs text-slate-500 tracking-wide -mt-1">MEDICAL TECHNOLOGIES INC.</div>
-      </div> */}
-    </div>
-    
-    <button 
-     onClick={() => {
-    const confirmed = window.confirm("Are you sure you want to exit?");
-    if (confirmed) {
-      window.close();
-    }
-  }}
-    className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-14 h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="group-hover:scale-110 transition-transform duration-300">
-            <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
+        <div className="flex items-center">
+          <img 
+            src={Logo} 
+            alt="Revive Medical Technologies" 
+            className="h-12 w-auto object-contain"
+            onError={(e) => {
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          {/* <div className="hidden flex-col items-start">
+            <div className="text-2xl font-bold text-blue-600 tracking-wider">REVIVE</div>
+            <div className="text-xs text-slate-500 tracking-wide -mt-1">MEDICAL TECHNOLOGIES INC.</div>
+          </div> */}
+        </div>
+        
+        <button
+          onClick={() => {
+            const confirmed = window.confirm("Are you sure you want to exit?");
+            if (confirmed) {
+              window.close();
+            }
+          }}
+          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+        >
+          <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
         </button>
-  </header>
+      </header>
 
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center px-8 py-12 gap-16">

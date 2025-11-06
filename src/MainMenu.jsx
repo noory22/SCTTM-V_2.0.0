@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {Power} from 'lucide-react';
 
 const MainMenu = () => {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -87,9 +88,9 @@ const MainMenu = () => {
     }
   };
 
-  const handleBackClick = () => {
-    console.log('Back to previous screen');
-  };
+  // const handleBackClick = () => {
+  //   console.log('Back to previous screen');
+  // };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -104,20 +105,17 @@ const MainMenu = () => {
       </div>
       
       <div className="flex items-center gap-6">
-        <button 
-            onClick={() => {
-              const confirmed = window.confirm("Are you sure you want to exit?");
-              if (confirmed) {
-                window.close();
-              }
-            }}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl w-12 h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-red-400/30"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300">
-              <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </button>
+        <button
+          onClick={() => {
+            const confirmed = window.confirm("Are you sure you want to exit?");
+            if (confirmed) {
+              window.close();
+            }
+          }}
+          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+        >
+          <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+        </button>
       </div>
     </header>
 
@@ -216,7 +214,7 @@ const MainMenu = () => {
                     CTTM-100
                   </h1>
                   <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 leading-tight">
-                    Catheter Trackability Testing
+                    Catheter Trackability Testing Machine
                   </h2>
                 </div>
                 
