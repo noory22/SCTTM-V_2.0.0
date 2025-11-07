@@ -335,7 +335,7 @@ const ProcessLogs = () => {
                       />
                       <YAxis 
                         stroke="#64748b"
-                        label={{ value: 'Distance (mm) / Force (N)', angle: -90, position: 'insideLeft' }}
+                        label={{ value: 'Distance / Force', angle: -90, position: 'insideLeft' }}
                       />
                      <Tooltip 
                         contentStyle={{

@@ -93,9 +93,9 @@ const MainMenu = () => {
   // };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
       {/* Header */}
-      <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10">
+      <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
       
       <div className="flex-1">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
@@ -120,7 +120,7 @@ const MainMenu = () => {
     </header>
 
       {/* Main Content */}
-      <main className="flex-1 px-8 py-8 xl:py-16">
+      <main className="flex-1 px-8 py-8 xl:py-16 flex-shrink-0 min-h-0">
         <div className="max-w-[1800px] mx-auto">
           <div className="flex flex-col xl:flex-row gap-8 xl:gap-20 items-start xl:items-center">
             {/* Left Section - Menu Options */}

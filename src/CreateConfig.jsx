@@ -237,7 +237,7 @@ const CreateConfig = () => {
               {/* Configuration Name */}
               <div className="space-y-2">
                 <label htmlFor="configName" className="block text-sm font-semibold text-slate-700">
-                  Configuration Name (Alphabets only)
+                  Configuration Name
                 </label>
                 <input
                   type="text"

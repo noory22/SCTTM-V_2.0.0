@@ -43,6 +43,31 @@ const ProcessMode = () => {
   const [isLogging, setIsLogging] = useState(false);
   const lastLoggedDataRef = useRef({ time: null, distance: null, force: null });
 
+  // Screen size state
+  const [screenSize, setScreenSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight
+  });
+
+  // Monitor screen size changes
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Determine responsive breakpoints
+  const isXlScreen = screenSize.width >= 1920;
+  const isLgScreen = screenSize.width >= 1366 && screenSize.width < 1920;
+  const isMdScreen = screenSize.width >= 1024 && screenSize.width < 1366;
+  const isSmScreen = screenSize.width < 1024;
+
   // Load selected configuration from localStorage
   useEffect(() => {
     const config = localStorage.getItem('selectedConfig');
@@ -177,21 +202,8 @@ const ProcessMode = () => {
       await window.serialAPI.controlHeater('on');
       console.log('✅ Heater ON command sent');
       
-      // Re-enable button after 2 seconds to prevent spamming
-      // setTimeout(() => {
-      //   setTemperatureStatus(prev => ({
-      //     ...prev,
-      //     heaterButtonDisabled: false
-      //   }));
-      // }, 2000);
-      
     } catch (error) {
       console.error('❌ Failed to turn heater ON:', error);
-      // // Re-enable button on error
-      // setTemperatureStatus(prev => ({
-      //   ...prev,
-      //   heaterButtonDisabled: false
-      // }));
     }
   };
 
@@ -220,11 +232,6 @@ const ProcessMode = () => {
       
     } catch (error) {
       console.error('❌ Failed to turn heater OFF:', error);
-      // Re-enable button on error
-      setTemperatureStatus(prev => ({
-        ...prev,
-        heaterButtonDisabled: false
-      }));
     }
   };
 
@@ -270,51 +277,6 @@ const ProcessMode = () => {
         logSensorData(timeFormatted, sensorData.distance, forceFormatted);
       }
     };
-    // const handleForceUpdate = (force) => {
-    //   console.log('📱 ProcessMode.jsx received force:', force);
-    //   const currentTime = (Date.now() - startTimeRef.current) / 1000;
-    //   const timeFormatted = parseFloat(currentTime.toFixed(1));
-    //   const forceFormatted = parseFloat(force.toFixed(1));
-      
-    //   setSensorData(prev => ({ ...prev, force: forceFormatted.toFixed(1) }));
-      
-    //   // NEW: Auto-pause check - Add this right after setting sensor data
-    //   if (selectedConfig && isProcessRunning && !isPaused) {
-    //     const peakForce = parseFloat(selectedConfig.peakForce);
-    //     if (!isNaN(forceFormatted) && !isNaN(peakForce) && forceFormatted >= peakForce) {
-    //       console.log(`🛑 Peak force safety limit reached: ${forceFormatted}N >= ${peakForce}N`);
-    //       console.log('🟡 Auto-pausing process for safety...');
-          
-    //       // Use the pause logic directly instead of handlePause to avoid command formatting issues
-    //       const distanceVal = formatCommandValue(selectedConfig.distance);
-    //       const tempVal = formatCommandValue(selectedConfig.temperature);
-    //       const forceVal = formatCommandValue(selectedConfig.peakForce);
-          
-    //       const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
-    //       console.log('Auto-pause command:', command);
-          
-    //       window.serialAPI.sendData(command);
-    //       return; // Stop further processing
-    //     }
-    //   }
-      
-    //   // Add to chart data only when process is running or paused
-    //   if (isProcessRunning || isPaused) {
-    //     setChartData(prev => {
-    //       const newData = [...prev, {
-    //         time: timeFormatted,
-    //         force: forceFormatted,
-    //         distance: parseFloat(sensorData.distance) || 0
-    //       }];
-    //       return newData;
-    //     });
-    //   }
-      
-    //   // Log data when process is running and not paused
-    //   if (isProcessRunning && !isPaused && sensorData.distance !== '--') {
-    //     logSensorData(timeFormatted, sensorData.distance, forceFormatted);
-    //   }
-    // };
 
     const handleDistanceUpdate = (distance) => {
       const currentTime = (Date.now() - startTimeRef.current) / 1000;
@@ -870,8 +832,8 @@ const ProcessMode = () => {
         </div>
       )}
 
-      {/* Camera Slide Panel - Small Screens */}
-      <div className={`xl:hidden fixed top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
+      {/* Camera Slide Panel - Small & Medium Screens */}
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
         showCameraPanel ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4">
@@ -899,8 +861,8 @@ const ProcessMode = () => {
         </div>
       </div>
 
-      {/* Config Slide Panel - Small Screens */}
-      <div className={`xl:hidden fixed top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
+      {/* Config Slide Panel - Small & Medium Screens */}
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
         showConfigPanel ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="p-4">
@@ -948,7 +910,7 @@ const ProcessMode = () => {
 
       {/* Header */}
       <header className="flex-shrink-0 relative bg-white/80 backdrop-blur-xl border-b border-gray-200/80 shadow-lg">
-        <div className="px-2 sm:px-4 py-2">
+        <div className={`${isXlScreen ? 'px-6 py-4' : isLgScreen ? 'px-4 py-3' : 'px-3 py-2'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-6 min-w-0">
               <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
@@ -961,10 +923,10 @@ const ProcessMode = () => {
                       : 'p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200'
                   }`}
                 >
-                  <ArrowLeft className="w-6 h-6 sm:w-5 sm:h-5" />
+                  <ArrowLeft className={`${isXlScreen ? 'w-6 h-6' : 'w-5 h-5'}`} />
                 </button>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-2xl xl:text-3xl font-bold bg-gradient-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent truncate">
+                  <h1 className={`${isXlScreen ? 'text-2xl' : isLgScreen ? 'text-xl' : 'text-lg'} font-bold bg-gradient-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent truncate`}>
                     Process Mode
                   </h1>
                   <p className="text-gray-600 text-xs sm:text-sm mt-0.5 truncate hidden sm:block">Process Mode - Real-time Monitoring</p>
@@ -983,7 +945,7 @@ const ProcessMode = () => {
                   ? 'bg-green-50 text-green-700 border border-green-200 shadow-sm shadow-green-500/10' 
                   : 'bg-red-50 text-red-700 border border-red-200 shadow-sm shadow-red-500/10'
               }`}>
-                <Usb className="w-3 h-3 sm:w-5 sm:h-5" />
+                <Usb className={`${isXlScreen ? 'w-5 h-5' : 'w-4 h-4'}`} />
                 <span className="text-xs sm:text-sm font-semibold hidden sm:inline">
                   {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
                 </span>
@@ -993,7 +955,7 @@ const ProcessMode = () => {
                 onClick={() => setShowInfoModal(true)}
                 className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
               >
-                <Info className="w-4 h-4 sm:w-6 sm:h-6 lg:w-7 lg:h-7 group-hover:scale-110 transition-transform duration-300" />
+                <Info className={`${isXlScreen ? 'w-7 h-7' : 'w-5 h-5'} group-hover:scale-110 transition-transform duration-300`} />
               </button>
               
               <button 
@@ -1010,7 +972,7 @@ const ProcessMode = () => {
                     : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-2xl border-red-400/30'
                   }`}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="sm:w-6 sm:h-6 lg:w-7 lg:h-7">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`${isXlScreen ? 'w-7 h-7' : 'w-5 h-5'}`}>
                   <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
                         stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
@@ -1020,188 +982,194 @@ const ProcessMode = () => {
         </div>
       </header>
 
-      {/* Floating Toggle Buttons - Small Screens Only - Draggable */}
-      <div className="xl:hidden fixed z-30">
-        <button
-          onMouseDown={(e) => {
-            setIsDraggingCamera(true);
-            setDragOffset({
-              x: e.clientX - cameraButtonPos.x,
-              y: e.clientY - cameraButtonPos.y
-            });
-          }}
-          onTouchStart={(e) => {
-            if (e.touches.length > 0) {
+      {/* Floating Toggle Buttons - Small & Medium Screens Only - Draggable */}
+      {!isXlScreen && (
+        <div className="fixed z-30">
+          <button
+            onMouseDown={(e) => {
               setIsDraggingCamera(true);
               setDragOffset({
-                x: e.touches[0].clientX - cameraButtonPos.x,
-                y: e.touches[0].clientY - cameraButtonPos.y
+                x: e.clientX - cameraButtonPos.x,
+                y: e.clientY - cameraButtonPos.y
               });
-            }
-          }}
-          onClick={(e) => {
-            if (!isDraggingCamera) {
-              setShowCameraPanel(!showCameraPanel);
-            }
-            e.stopPropagation();
-          }}
-          style={{
-            position: 'fixed',
-            left: `${cameraButtonPos.x}px`,
-            top: `${cameraButtonPos.y}px`,
-            cursor: isDraggingCamera ? 'grabbing' : 'grab',
-            touchAction: 'none'
-          }}
-          className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
-        >
-          <Camera className="w-5 h-5" />
-        </button>
-        <button
-          onMouseDown={(e) => {
-            setIsDraggingConfig(true);
-            setDragOffset({
-              x: e.clientX - configButtonPos.x,
-              y: e.clientY - configButtonPos.y
-            });
-          }}
-          onTouchStart={(e) => {
-            if (e.touches.length > 0) {
+            }}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                setIsDraggingCamera(true);
+                setDragOffset({
+                  x: e.touches[0].clientX - cameraButtonPos.x,
+                  y: e.touches[0].clientY - cameraButtonPos.y
+                });
+              }
+            }}
+            onClick={(e) => {
+              if (!isDraggingCamera) {
+                setShowCameraPanel(!showCameraPanel);
+              }
+              e.stopPropagation();
+            }}
+            style={{
+              position: 'fixed',
+              left: `${cameraButtonPos.x}px`,
+              top: `${cameraButtonPos.y}px`,
+              cursor: isDraggingCamera ? 'grabbing' : 'grab',
+              touchAction: 'none'
+            }}
+            className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
+          >
+            <Camera className="w-5 h-5" />
+          </button>
+          <button
+            onMouseDown={(e) => {
               setIsDraggingConfig(true);
               setDragOffset({
-                x: e.touches[0].clientX - configButtonPos.x,
-                y: e.touches[0].clientY - configButtonPos.y
+                x: e.clientX - configButtonPos.x,
+                y: e.clientY - configButtonPos.y
               });
-            }
-          }}
-          onClick={(e) => {
-            if (!isDraggingConfig) {
-              setShowConfigPanel(!showConfigPanel);
-            }
-            e.stopPropagation();
-          }}
-          style={{
-            position: 'fixed',
-            left: `${configButtonPos.x}px`,
-            top: `${configButtonPos.y}px`,
-            cursor: isDraggingConfig ? 'grabbing' : 'grab',
-            touchAction: 'none'
-          }}
-          className="bg-gradient-to-br from-purple-500 to-indigo-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
-        >
-          <Info className="w-5 h-5" />
-        </button>
-      </div>
+            }}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                setIsDraggingConfig(true);
+                setDragOffset({
+                  x: e.touches[0].clientX - configButtonPos.x,
+                  y: e.touches[0].clientY - configButtonPos.y
+                });
+              }
+            }}
+            onClick={(e) => {
+              if (!isDraggingConfig) {
+                setShowConfigPanel(!showConfigPanel);
+              }
+              e.stopPropagation();
+            }}
+            style={{
+              position: 'fixed',
+              left: `${configButtonPos.x}px`,
+              top: `${configButtonPos.y}px`,
+              cursor: isDraggingConfig ? 'grabbing' : 'grab',
+              touchAction: 'none'
+            }}
+            className="bg-gradient-to-br from-purple-500 to-indigo-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
+          >
+            <Info className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
-      <main className="relative flex flex-col xl:flex-row flex-1 gap-2 sm:gap-4 p-2 sm:p-4 min-h-0 overflow-hidden">
+      <main className={`relative flex ${isXlScreen ? 'flex-row' : 'flex-col'} flex-1 ${isXlScreen ? 'gap-6 p-6' : isLgScreen ? 'gap-4 p-4' : 'gap-3 p-3'} min-h-0 overflow-hidden`}>
         {/* Left Panel - Camera Feed and Graph */}
-        <section className="flex-1 flex flex-col gap-2 sm:gap-4 min-w-0 min-h-0">
-          {/* Camera Feed - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 flex-[0_0_40%] min-h-0">
-            <div className="p-3 border-b border-gray-200/80">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Camera className="w-4 h-4 text-white" />
+        <section className={`flex-1 flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} min-w-0 min-h-0`}>
+          {/* Camera Feed - Hidden on small & medium screens */}
+          {isXlScreen && (
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 flex-[0_0_40%] min-h-0">
+              <div className="p-3 border-b border-gray-200/80">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
+                      <Camera className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Live Camera Feed</h2>
+                      <p className="text-gray-600 text-xs">Real-time Machine Vision</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Live Camera Feed</h2>
-                    <p className="text-gray-600 text-xs">Real-time Machine Vision</p>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
+                    <span className="text-red-600 text-xs font-medium">LIVE</span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50"></div>
-                  <span className="text-red-600 text-xs font-medium">LIVE</span>
+              </div>
+              
+              <div className="p-4 h-[calc(100%-60px)]">
+                <div className="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 shadow-inner">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent pointer-events-none"></div>
+                  <div className="absolute top-3 left-3 flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow-sm">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-gray-900 text-xs font-medium">LIVE</span>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <div className="p-4 h-[calc(100%-60px)]">
-              <div className="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 shadow-inner">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent pointer-events-none"></div>
-                <div className="absolute top-3 left-3 flex items-center space-x-2 bg-white/90 backdrop-blur-sm px-2.5 py-1.5 rounded-lg shadow-sm">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-gray-900 text-xs font-medium">LIVE</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Real-time Chart with Sensor Data on Small Screens */}
           <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-xl shadow-gray-200/50 min-h-0 flex flex-col">
             <div className="mb-2 sm:mb-3 flex-shrink-0">
-              <h3 className="text-base sm:text-lg font-bold text-gray-900">Real-time Analytics</h3>
+              <h3 className={`${isXlScreen ? 'text-lg' : 'text-base'} font-bold text-gray-900`}>Real-time Analytics</h3>
               <p className="text-gray-600 text-xs hidden sm:block">Force & Distance vs Time</p>
             </div>
             
-            {/* Sensor Data - Only visible on small screens */}
-            <div className="xl:hidden mb-3 grid grid-cols-2 gap-2 flex-shrink-0">
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
-                <div className="flex items-center space-x-2 mb-1">
-                  <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
-                    <Thermometer className="w-3 h-3 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Temperature</p>
-                </div>
-                <p className="text-sm font-bold text-orange-600">{sensorData.temperature}°C</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
-                <div className="flex items-center space-x-2 mb-1">
-                  <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center">
-                    <Gauge className="w-3 h-3 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Force</p>
-                </div>
-                <p className="text-sm font-bold text-blue-600">{sensorData.force} N</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200/50 p-2">
-                <div className="flex items-center space-x-2 mb-1">
-                  <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-md flex items-center justify-center">
-                    <Ruler className="w-3 h-3 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Distance</p>
-                </div>
-                <p className="text-sm font-bold text-green-600">{sensorData.distance} mm</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                      sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-                      sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                      sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
-                      sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
-                      'bg-gradient-to-br from-gray-400 to-gray-500'
-                    }`}>
-                      <Activity className="w-3 h-3 text-white" />
+            {/* Sensor Data - Only visible on small & medium screens */}
+            {!isXlScreen && (
+              <div className="mb-3 grid grid-cols-2 gap-2 flex-shrink-0">
+                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
+                      <Thermometer className="w-3 h-3 text-white" />
                     </div>
-                    <p className="text-gray-600 text-xs font-medium">Status</p>
+                    <p className="text-gray-600 text-xs font-medium">Temperature</p>
                   </div>
-                  <div className={`w-2 h-2 rounded-full ${
-                    sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
-                    sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
-                    sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
-                    sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
-                  }`}></div>
+                  <p className="text-sm font-bold text-orange-600">{sensorData.temperature}°C</p>
                 </div>
-                <p className={`text-sm font-bold ${
-                  sensorData.status === 'RUNNING' ? 'text-green-600' :
-                  sensorData.status === 'PAUSED' ? 'text-yellow-600' :
-                  sensorData.status === 'HOMING' ? 'text-purple-600' :
-                  sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
-                }`}>{sensorData.status}</p>
+
+                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-md flex items-center justify-center">
+                      <Gauge className="w-3 h-3 text-white" />
+                    </div>
+                    <p className="text-gray-600 text-xs font-medium">Force</p>
+                  </div>
+                  <p className="text-sm font-bold text-blue-600">{sensorData.force} N</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200/50 p-2">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-md flex items-center justify-center">
+                      <Ruler className="w-3 h-3 text-white" />
+                    </div>
+                    <p className="text-gray-600 text-xs font-medium">Distance</p>
+                  </div>
+                  <p className="text-sm font-bold text-green-600">{sensorData.distance} mm</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                        sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                        sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
+                        sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
+                        sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
+                        'bg-gradient-to-br from-gray-400 to-gray-500'
+                      }`}>
+                        <Activity className="w-3 h-3 text-white" />
+                      </div>
+                      <p className="text-gray-600 text-xs font-medium">Status</p>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${
+                      sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
+                      sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
+                      sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
+                      sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}></div>
+                  </div>
+                  <p className={`text-sm font-bold ${
+                    sensorData.status === 'RUNNING' ? 'text-green-600' :
+                    sensorData.status === 'PAUSED' ? 'text-yellow-600' :
+                    sensorData.status === 'HOMING' ? 'text-purple-600' :
+                    sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
+                  }`}>{sensorData.status}</p>
+                </div>
               </div>
-            </div>
+            )}
             
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
@@ -1259,121 +1227,127 @@ const ProcessMode = () => {
         </section>
 
         {/* Right Panel - Configuration and Sensor Data */}
-        <section className="w-full xl:w-[400px] 2xl:w-[450px] flex flex-col gap-2 sm:gap-3 pb-20 xl:pb-0 min-h-0">
-          {/* Active Configuration Parameters - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-shrink-0">
-            <div className="mb-2">
-              <h3 className="text-lg font-bold text-gray-900">Active Configuration</h3>
-              <p className="text-gray-600 text-xs">Current process parameters</p>
-            </div>
-            
-            {selectedConfig ? (
-              <div className="space-y-2.5">
-                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
-                  <p className="text-gray-600 text-xs mb-0.5">Configuration Name</p>
-                  <p className="text-base font-bold text-blue-700">{selectedConfig.configName}</p>
+        <section className={`${isXlScreen ? 'w-[400px]' : 'w-full'} flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} pb-20 xl:pb-0 min-h-0`}>
+          {/* Active Configuration Parameters - Hidden on small & medium screens */}
+          {isXlScreen && (
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-shrink-0">
+              <div className="mb-2">
+                <h3 className="text-lg font-bold text-gray-900">Active Configuration</h3>
+                <p className="text-gray-600 text-xs">Current process parameters</p>
+              </div>
+              
+              {selectedConfig ? (
+                <div className="space-y-2.5">
+                  <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
+                    <p className="text-gray-600 text-xs mb-0.5">Configuration Name</p>
+                    <p className="text-base font-bold text-blue-700">{selectedConfig.configName}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
+                      <p className="text-gray-600 text-xs mb-0.5">Distance</p>
+                      <p className="text-base font-bold text-green-700">{selectedConfig.distance} mm</p>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
+                      <p className="text-gray-600 text-xs mb-0.5">Peak Force</p>
+                      <p className="text-base font-bold text-blue-700">{selectedConfig.peakForce} N</p>
+                    </div>
+                    
+                    <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                      <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
+                      <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
-                    <p className="text-gray-600 text-xs mb-0.5">Distance</p>
-                    <p className="text-base font-bold text-green-700">{selectedConfig.distance} mm</p>
+              ) : (
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
+                  <p className="text-yellow-800 font-medium text-sm">⚠️ No configuration selected</p>
+                  <p className="text-yellow-700 text-xs mt-1">Please load a configuration to proceed</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Real-time Sensor Data - Hidden on small & medium screens */}
+          {isXlScreen && (
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-1 min-h-0">
+              <div className="mb-3">
+                <h3 className="text-lg font-bold text-gray-900">Real-time Sensors</h3>
+                <p className="text-gray-600 text-xs">Live monitoring data</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
+                      <Thermometer className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-gray-600 text-xs font-medium">Temperature</p>
                   </div>
-                  
-                  <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
-                    <p className="text-gray-600 text-xs mb-0.5">Peak Force</p>
-                    <p className="text-base font-bold text-blue-700">{selectedConfig.peakForce} N</p>
+                  <p className="text-xl font-bold text-orange-600">{sensorData.temperature}°C</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+                      <Gauge className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-gray-600 text-xs font-medium">Force</p>
                   </div>
-                  
-                  <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
-                    <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
-                    <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
+                  <p className="text-xl font-bold text-blue-600">{sensorData.force} N</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
+                      <Ruler className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-gray-600 text-xs font-medium">Distance</p>
                   </div>
+                  <p className="text-xl font-bold text-green-600">{sensorData.distance} mm</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
+                        sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                        sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
+                        sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
+                        sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
+                        'bg-gradient-to-br from-gray-400 to-gray-500'
+                      }`}>
+                        <Activity className="w-4 h-4 text-white" />
+                      </div>
+                      <p className="text-gray-600 text-xs font-medium">Status</p>
+                    </div>
+                    <div className={`w-2.5 h-2.5 rounded-full ${
+                      sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
+                      sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
+                      sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
+                      sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}></div>
+                  </div>
+                  <p className={`text-xl font-bold ${
+                    sensorData.status === 'RUNNING' ? 'text-green-600' :
+                    sensorData.status === 'PAUSED' ? 'text-yellow-600' :
+                    sensorData.status === 'HOMING' ? 'text-purple-600' :
+                    sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
+                  }`}>{sensorData.status}</p>
                 </div>
               </div>
-            ) : (
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
-                <p className="text-yellow-800 font-medium text-sm">⚠️ No configuration selected</p>
-                <p className="text-yellow-700 text-xs mt-1">Please load a configuration to proceed</p>
+            </div>
+          )}
+
+          {/* Control Buttons - Now fixed at bottom on small & medium screens */}
+          <div className={`${isXlScreen ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}>
+            {isXlScreen && (
+              <div className="mb-2">
+                <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
+                <p className="text-gray-600 text-xs">Manage process execution</p>
               </div>
             )}
-          </div>
-
-          {/* Real-time Sensor Data - Hidden on small screens */}
-          <div className="hidden xl:block bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-1 min-h-0">
-            <div className="mb-3">
-              <h3 className="text-lg font-bold text-gray-900">Real-time Sensors</h3>
-              <p className="text-gray-600 text-xs">Live monitoring data</p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
-                <div className="flex items-center space-x-2 mb-1.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Thermometer className="w-4 h-4 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Temperature</p>
-                </div>
-                <p className="text-xl font-bold text-orange-600">{sensorData.temperature}°C</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
-                <div className="flex items-center space-x-2 mb-1.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Gauge className="w-4 h-4 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Force</p>
-                </div>
-                <p className="text-xl font-bold text-blue-600">{sensorData.force} N</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 p-3">
-                <div className="flex items-center space-x-2 mb-1.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <Ruler className="w-4 h-4 text-white" />
-                  </div>
-                  <p className="text-gray-600 text-xs font-medium">Distance</p>
-                </div>
-                <p className="text-xl font-bold text-green-600">{sensorData.distance} mm</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center space-x-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
-                      sensorData.status === 'RUNNING' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-                      sensorData.status === 'PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                      sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
-                      sensorData.status === 'READY' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
-                      'bg-gradient-to-br from-gray-400 to-gray-500'
-                    }`}>
-                      <Activity className="w-4 h-4 text-white" />
-                    </div>
-                    <p className="text-gray-600 text-xs font-medium">Status</p>
-                  </div>
-                  <div className={`w-2.5 h-2.5 rounded-full ${
-                    sensorData.status === 'RUNNING' ? 'bg-green-500 animate-pulse' :
-                    sensorData.status === 'PAUSED' ? 'bg-yellow-500' :
-                    sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
-                    sensorData.status === 'READY' ? 'bg-blue-500' : 'bg-gray-400'
-                  }`}></div>
-                </div>
-                <p className={`text-xl font-bold ${
-                  sensorData.status === 'RUNNING' ? 'text-green-600' :
-                  sensorData.status === 'PAUSED' ? 'text-yellow-600' :
-                  sensorData.status === 'HOMING' ? 'text-purple-600' :
-                  sensorData.status === 'READY' ? 'text-blue-600' : 'text-gray-600'
-                }`}>{sensorData.status}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Control Buttons - Now fixed at bottom on small screens */}
-          <div className="xl:relative fixed bottom-0 left-0 right-0 bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0">
-            <div className="mb-2 hidden xl:block">
-              <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
-              <p className="text-gray-600 text-xs">Manage process execution</p>
-            </div>
             
             <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
               <button
