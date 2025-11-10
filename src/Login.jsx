@@ -43,10 +43,6 @@ const Login = () => {
               e.target.nextSibling.style.display = 'flex';
             }}
           />
-          {/* <div className="hidden flex-col items-start">
-            <div className="text-2xl font-bold text-blue-600 tracking-wider">REVIVE</div>
-            <div className="text-xs text-slate-500 tracking-wide -mt-1">MEDICAL TECHNOLOGIES INC.</div>
-          </div> */}
         </div>
         
         <button
@@ -56,7 +52,10 @@ const Login = () => {
               window.close();
             }
           }}
-          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+           text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center 
+           justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border
+            border-red-400/30 flex-shrink-0"
         >
           <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
         </button>
@@ -76,7 +75,8 @@ const Login = () => {
               <input
                 type="text"
                 id="username"
-                className="p-4 border-2 border-gray-200 rounded-lg text-base transition-all duration-300 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white focus:shadow-lg focus:ring-2 focus:ring-blue-100"
+                className="p-4 border-2 border-gray-200 rounded-lg text-base transition-all duration-300 bg-gray-50 
+                focus:outline-none focus:border-blue-600 focus:bg-white focus:shadow-lg focus:ring-2 focus:ring-blue-100"
                 placeholder="Enter Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -91,7 +91,9 @@ const Login = () => {
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  className="w-full p-4 pr-12 border-2 border-gray-200 rounded-lg text-base transition-all duration-300 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white focus:shadow-lg focus:ring-2 focus:ring-blue-100"
+                  className="w-full p-4 pr-12 border-2 border-gray-200 rounded-lg text-base transition-all duration-300
+                   bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white focus:shadow-lg focus:ring-2
+                    focus:ring-blue-100"
                   placeholder="Enter Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -127,7 +129,10 @@ const Login = () => {
                       </>
                     ) : (
                       <>
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 
+                        0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" 
+                        stroke="currentColor" 
+                        strokeWidth="2"/>
                         <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" strokeWidth="2"/>
                       </>
                     )}
@@ -138,7 +143,9 @@ const Login = () => {
 
             <button 
               type="submit" 
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-4 text-lg font-semibold cursor-pointer transition-all duration-300 mt-4 flex items-center justify-center min-h-[52px] hover:-translate-y-1 hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:bg-gray-500"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-4 text-lg font-semibold cursor-pointer 
+              transition-all duration-300 mt-4 flex items-center justify-center min-h-[52px] hover:-translate-y-1 
+              hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none disabled:bg-gray-500"
               disabled={isLoading}
             >
               {isLoading ? (

@@ -36,7 +36,8 @@ const ProcessMode = () => {
     dialogMessage: '',
     dialogType: '' ,// 'heating-required' or 'heating-complete'
     heaterButtonDisabled: false,
-    targetTemperature: null
+    targetTemperature: null,
+    wasTemperatureDrop: false // NEW: Track if temperature dropped during process
   });
 
   // CSV Logging state
@@ -78,6 +79,49 @@ const ProcessMode = () => {
 
   //-----------------------------------------------------------------//
   // Temperature monitoring effect
+  // useEffect(() => {
+  //   if (!selectedConfig || sensorData.temperature === '--') return;
+
+  //   const currentTemp = parseFloat(sensorData.temperature);
+  //   const targetTemp = parseFloat(selectedConfig.temperature);
+
+  //   if (isNaN(currentTemp) || isNaN(targetTemp)) return;
+
+  //   console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C`);
+
+  //   if (currentTemp < targetTemp) {
+  //     // Temperature is below target
+  //     if (!temperatureStatus.isHeatingRequired) {
+  //       setTemperatureStatus({
+  //         isHeatingRequired: true,
+  //         isHeatingComplete: false,
+  //         showHeaterDialog: true,
+  //         dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
+  //         dialogType: 'heating-required',
+  //         heaterButtonDisabled: false,
+  //         targetTemperature: targetTemp
+  //       });
+  //       console.log('🔥 Heating required - showing dialog');
+  //     }
+  //   } else {
+  //     // Temperature reached or exceeded target
+  //     if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
+  //       setTemperatureStatus({
+  //         isHeatingRequired: false,
+  //         isHeatingComplete: true,
+  //         showHeaterDialog: true,
+  //         dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
+  //         dialogType: 'heating-complete',
+  //         heaterButtonDisabled: false,
+  //         targetTemperature: targetTemp
+  //       });
+  //       console.log('✅ Heating complete - showing turn off dialog');
+  //     }
+  //   }
+  // }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete]);
+  //-----------------------------------------------------------------//
+    //-----------------------------------------------------------------//
+  // Temperature monitoring effect - UPDATED
   useEffect(() => {
     if (!selectedConfig || sensorData.temperature === '--') return;
 
@@ -86,40 +130,94 @@ const ProcessMode = () => {
 
     if (isNaN(currentTemp) || isNaN(targetTemp)) return;
 
-    console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C`);
+    console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C, ProcessRunning=${isProcessRunning}, Status=${sensorData.status}`);
 
+    // NEW: Check if temperature drops below target during running process
+    if (isProcessRunning && !isPaused && currentTemp < targetTemp) {
+      console.log('❌ Temperature dropped below target during process - Auto-pausing');
+      
+      // Set temperature drop flag
+      setTemperatureStatus(prev => ({
+        ...prev,
+        wasTemperatureDrop: true
+      }));
+
+      // Auto-pause the process using the same command as manual pause
+      handleAutoPause();
+      
+      // Show heater dialog
+      setTemperatureStatus(prev => ({
+        ...prev,
+        isHeatingRequired: true,
+        isHeatingComplete: false,
+        showHeaterDialog: true,
+        dialogMessage: `Temperature dropped to ${currentTemp}°C (below required ${targetTemp}°C). Process auto-paused. Please turn ON the heater.`,
+        dialogType: 'heating-required',
+        heaterButtonDisabled: false,
+        targetTemperature: targetTemp
+      }));
+      
+      return; // Exit early since we're handling the temperature drop case
+    }
+
+    // Existing temperature monitoring logic for non-running states
     if (currentTemp < targetTemp) {
       // Temperature is below target
       if (!temperatureStatus.isHeatingRequired) {
-        setTemperatureStatus({
+        setTemperatureStatus(prev => ({
+          ...prev,
           isHeatingRequired: true,
           isHeatingComplete: false,
           showHeaterDialog: true,
           dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
           dialogType: 'heating-required',
           heaterButtonDisabled: false,
-          targetTemperature: targetTemp
-        });
+          targetTemperature: targetTemp,
+          wasTemperatureDrop: false
+        }));
         console.log('🔥 Heating required - showing dialog');
       }
     } else {
       // Temperature reached or exceeded target
       if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
-        setTemperatureStatus({
+        setTemperatureStatus(prev => ({
+          ...prev,
           isHeatingRequired: false,
           isHeatingComplete: true,
           showHeaterDialog: true,
           dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
           dialogType: 'heating-complete',
           heaterButtonDisabled: false,
-          targetTemperature: targetTemp
-        });
+          targetTemperature: targetTemp,
+          wasTemperatureDrop: false
+        }));
         console.log('✅ Heating complete - showing turn off dialog');
       }
     }
-  }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete]);
+  }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete, isProcessRunning, isPaused]);
   //-----------------------------------------------------------------//
 
+  // NEW: Auto-pause function for temperature drops - USES SAME COMMAND AS MANUAL PAUSE
+  const handleAutoPause = async () => {
+    try {
+      if (!selectedConfig) return;
+      
+      const distanceVal = formatCommandValue(selectedConfig.distance);
+      const tempVal = formatCommandValue(selectedConfig.temperature);
+      const forceVal = formatCommandValue(selectedConfig.peakForce);
+      
+      const command = `*1:2:${distanceVal}:${tempVal}:${forceVal}#`;
+      console.log('🔄 Auto-pause command due to temperature drop:', command);
+      
+      await window.serialAPI.sendData(command);
+      
+      // Note: We don't update local state here because the process-response listener
+      // will handle the state update when it receives the 'paused' response from the machine
+      
+    } catch (error) {
+      console.error('Failed to auto-pause process:', error);
+    }
+  };
   // CSV Logging functions
   const startCsvLogging = async () => {
     if (!selectedConfig) {
@@ -190,6 +288,61 @@ const ProcessMode = () => {
   };
   //---------------------------------------------------------------------------------//
   // Heater Control Functions
+  // const handleHeaterOn = async () => {
+  //   try {
+  //     // Disable button immediately
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       heaterButtonDisabled: true
+  //     }));
+      
+  //     console.log('🔥 Turning heater ON...');
+  //     await window.serialAPI.controlHeater('on');
+  //     console.log('✅ Heater ON command sent');
+      
+  //   } catch (error) {
+  //     console.error('❌ Failed to turn heater ON:', error);
+  //   }
+  // };
+
+  // const handleHeaterOff = async () => {
+  //   try {
+  //     // Disable button immediately
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       heaterButtonDisabled: true
+  //     }));
+      
+  //     console.log('🔥 Turning heater OFF...');
+  //     await window.serialAPI.controlHeater('off');
+      
+  //     // Close dialog and enable start button
+  //     setTemperatureStatus({
+  //       isHeatingRequired: false,
+  //       isHeatingComplete: false,
+  //       showHeaterDialog: false,
+  //       dialogMessage: '',
+  //       dialogType: '',
+  //       heaterButtonDisabled: false,
+  //       targetTemperature: null
+  //     });
+  //     console.log('✅ Heater OFF command sent, dialog closed');
+      
+  //   } catch (error) {
+  //     console.error('❌ Failed to turn heater OFF:', error);
+  //   }
+  // };
+
+  // const closeHeaterDialog = () => {
+  //   // Only allow closing for heating-complete dialog, not for heating-required
+  //   if (temperatureStatus.dialogType === 'heating-complete') {
+  //     setTemperatureStatus(prev => ({
+  //       ...prev,
+  //       showHeaterDialog: false
+  //     }));
+  //   }
+  // };
+  // Heater Control Functions - UPDATED
   const handleHeaterOn = async () => {
     try {
       // Disable button immediately
@@ -226,7 +379,8 @@ const ProcessMode = () => {
         dialogMessage: '',
         dialogType: '',
         heaterButtonDisabled: false,
-        targetTemperature: null
+        targetTemperature: null,
+        wasTemperatureDrop: false
       });
       console.log('✅ Heater OFF command sent, dialog closed');
       
@@ -240,7 +394,8 @@ const ProcessMode = () => {
     if (temperatureStatus.dialogType === 'heating-complete') {
       setTemperatureStatus(prev => ({
         ...prev,
-        showHeaterDialog: false
+        showHeaterDialog: false,
+        wasTemperatureDrop: false
       }));
     }
   };
@@ -478,7 +633,7 @@ const ProcessMode = () => {
       return;
     }
     // Check if heating is required
-    if (temperatureStatus.isHeatingRequired) {
+    if (temperatureStatus.isHeatingRequired && !temperatureStatus.wasTemperatureDrop) {
       console.log('❌ Cannot start process - heating required');
       return;
     }
@@ -538,7 +693,10 @@ const ProcessMode = () => {
         isHeatingComplete: false,
         showHeaterDialog: false,
         dialogMessage: '',
-        dialogType: ''
+        dialogType: '',
+        heaterButtonDisabled: false,
+        targetTemperature: null,
+        wasTemperatureDrop: false
       });
       
       // Stop CSV logging when reset is pressed
@@ -554,6 +712,10 @@ const ProcessMode = () => {
 
   const handleBack = () => {
     navigate('/handle-config/load');
+  };
+
+  const getStartButtonText = () => {
+    return isPaused ? 'RESUME' : 'START';
   };
 
   const shouldDisableBackButton = () => {
@@ -578,7 +740,9 @@ const ProcessMode = () => {
               <div className="flex items-center space-x-3">
                 <Flame className="w-6 h-6 text-white" />
                 <h2 className="text-xl font-bold text-white">
-                  {temperatureStatus.dialogType === 'heating-required' ? 'Heating Required' : 'Heating Complete'}
+                  {temperatureStatus.dialogType === 'heating-required' 
+                    ? (temperatureStatus.wasTemperatureDrop ? 'Process Auto-Paused' : 'Heating Required')
+                    : 'Heating Complete'}
                 </h2>
               </div>
               {temperatureStatus.dialogType === 'heating-complete' && (
@@ -635,7 +799,7 @@ const ProcessMode = () => {
                 </div>
               </div>
               
-              {/* Message */}
+              {/* Message - UPDATED FOR TEMPERATURE DROP */}
               <div className={`p-4 rounded-xl mb-4 ${
                 temperatureStatus.dialogType === 'heating-required' 
                   ? 'bg-orange-50 border border-orange-200' 
@@ -646,6 +810,11 @@ const ProcessMode = () => {
                 }`}>
                   {temperatureStatus.dialogMessage}
                 </p>
+                {temperatureStatus.wasTemperatureDrop && (
+                  <p className="text-orange-700 text-sm mt-2 text-center font-semibold">
+                    ⚠️ Process will resume automatically when temperature reaches target
+                  </p>
+                )}
               </div>
               
               {/* Action Button */}
@@ -683,11 +852,14 @@ const ProcessMode = () => {
                 )}
               </div>
               
-              {/* Status Message */}
+              {/* Status Message - UPDATED */}
               {temperatureStatus.dialogType === 'heating-required' && (
                 <div className="mt-3 text-center">
                   <p className="text-orange-600 text-sm font-medium">
-                    ⚠️ Start button will be enabled when temperature reaches target
+                    {temperatureStatus.wasTemperatureDrop 
+                      ? '⚠️ Process paused. Resume when temperature reaches target'
+                      : '⚠️ Start button will be enabled when temperature reaches target'
+                    }
                   </p>
                   <p className="text-gray-500 text-xs mt-1">
                     Current: {sensorData.temperature}°C / Target: {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
@@ -823,7 +995,8 @@ const ProcessMode = () => {
             <div className="sticky bottom-0 bg-gray-50 p-4 rounded-b-2xl border-t border-gray-200">
               <button
                 onClick={() => setShowInfoModal(false)}
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
+                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600
+                 hover:to-cyan-600 text-white font-bold py-3 px-6 rounded-xl transition-all"
               >
                 I Understand - Close
               </button>
@@ -833,7 +1006,8 @@ const ProcessMode = () => {
       )}
 
       {/* Camera Slide Panel - Small & Medium Screens */}
-      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 
+      backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
         showCameraPanel ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4">
@@ -862,7 +1036,8 @@ const ProcessMode = () => {
       </div>
 
       {/* Config Slide Panel - Small & Medium Screens */}
-      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 
+      backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
         showConfigPanel ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="p-4">
@@ -926,7 +1101,8 @@ const ProcessMode = () => {
                   <ArrowLeft className={`${isXlScreen ? 'w-6 h-6' : 'w-5 h-5'}`} />
                 </button>
                 <div className="min-w-0">
-                  <h1 className={`${isXlScreen ? 'text-2xl' : isLgScreen ? 'text-xl' : 'text-lg'} font-bold bg-gradient-to-r from-gray-900 to-blue-700 bg-clip-text text-transparent truncate`}>
+                  <h1 className={`${isXlScreen ? 'text-2xl' : isLgScreen ? 'text-xl' : 'text-lg'} font-bold bg-gradient-to-r
+                   from-gray-900 to-blue-700 bg-clip-text text-transparent truncate`}>
                     Process Mode
                   </h1>
                   <p className="text-gray-600 text-xs sm:text-sm mt-0.5 truncate hidden sm:block">Process Mode - Real-time Monitoring</p>
@@ -953,7 +1129,9 @@ const ProcessMode = () => {
 
               <button 
                 onClick={() => setShowInfoModal(true)}
-                className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
+                className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white 
+                rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 
+                hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
               >
                 <Info className={`${isXlScreen ? 'w-7 h-7' : 'w-5 h-5'} group-hover:scale-110 transition-transform duration-300`} />
               </button>
@@ -966,16 +1144,15 @@ const ProcessMode = () => {
                   }
                 }}
                 disabled={shouldDisablePowerButton()}
-                className={`group rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-xl border
+                className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex 
+                  items-center justify-center transition-all duration-300 shadow-lg border
                   ${shouldDisablePowerButton() 
                     ? 'bg-gray-200 cursor-not-allowed text-gray-400 border-gray-300' 
-                    : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-2xl border-red-400/30'
+                    : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30'
                   }`}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`${isXlScreen ? 'w-7 h-7' : 'w-5 h-5'}`}>
-                  <path d="M12 2V12M18.36 6.64C19.78 8.05 20.55 9.92 20.55 12C20.55 16.14 17.19 19.5 13.05 19.5C8.91 19.5 5.55 16.14 5.55 12C5.55 9.92 6.32 8.05 7.74 6.64" 
-                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-                </svg>
+                >
+                <Power className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-transform duration-300
+                  ${shouldDisablePowerButton() ? '' : 'group-hover:scale-110'}`} />
               </button>
             </div>
           </div>
@@ -1341,7 +1518,9 @@ const ProcessMode = () => {
           )}
 
           {/* Control Buttons - Now fixed at bottom on small & medium screens */}
-          <div className={`${isXlScreen ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white/95 xl:bg-white/70 backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}>
+          <div className={`${isXlScreen ? 'relative' : 'fixed bottom-0 left-0 right-0'} bg-white/95 xl:bg-white/70 
+          backdrop-blur-xl rounded-t-2xl xl:rounded-2xl border-t xl:border border-gray-200/80 p-3 sm:p-4 shadow-2xl 
+          xl:shadow-xl shadow-gray-200/50 z-20 flex-shrink-0`}>
             {isXlScreen && (
               <div className="mb-2">
                 <h3 className="text-lg font-bold text-gray-900">Process Controls</h3>
@@ -1352,21 +1531,23 @@ const ProcessMode = () => {
             <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
               <button
                 onClick={handleStart}
-                disabled={shouldDisableButtons() || (isProcessRunning && !isPaused)}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableButtons() || (isProcessRunning && !isPaused)
+                disabled={shouldDisableButtons()}
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 
+                  rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                  shouldDisableButtons()
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
                 }`}
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">START</span>
+                <span className="text-sm sm:text-base">{getStartButtonText()}</span>
               </button>
               
               <button
                 onClick={handlePause}
                 disabled={shouldDisableButtons() || !isProcessRunning || isPaused}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
+                  font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
                   shouldDisableButtons() || !isProcessRunning || isPaused
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
@@ -1379,7 +1560,8 @@ const ProcessMode = () => {
               <button
                 onClick={handleReset}
                 disabled={!selectedConfig || isHoming}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl 
+                  font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
                   !selectedConfig || isHoming
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'

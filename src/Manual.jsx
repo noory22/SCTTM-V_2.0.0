@@ -209,7 +209,9 @@ const Manual = () => {
                 window.close();
               }
             }}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
+            rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all 
+            duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
           >
             <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
           </button>
@@ -398,13 +400,15 @@ const Manual = () => {
               <div className="flex justify-center space-x-4 mb-4">
                 <button
                   onClick={() => moveCatheter('backward')}
-                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center
+                   text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={() => moveCatheter('forward')}
-                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center
+                   text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
@@ -437,7 +441,8 @@ const Manual = () => {
                     <div className="absolute inset-0 flex items-center justify-center">
                       {/* Heat waves icon */}
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm-6-4c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
+                        <path d="M6 12c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2zm-6-4c0-1.1.9-2 2-2s2 
+                        .9 2 2-.9 2-2 2-2-.9-2-2zm6 0c0-1.1.9-2 2-2s2 .9 2 2-.9 2-2 2-2-.9-2-2z"/>
                       </svg>
                     </div>
                     {controls.heater && (

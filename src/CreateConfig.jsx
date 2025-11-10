@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import {ArrowLeft, Info,Power, AlertCircle,Download, X} from 'lucide-react';
+import {ArrowLeft, Info,Power, AlertCircle, X} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -25,7 +25,7 @@ const CreateConfig = () => {
     if (!formData.configName.trim()) {
       newErrors.configName = 'Configuration name is required';
     } else if (!/^[A-Za-z0-9]+$/.test(formData.configName)) {
-      newErrors.configName = 'Configuration name must contain only alphabets';
+      newErrors.configName = 'Configuration name can contain alphabets and numbers';
     } else if (formData.configName.length > 30) {
       newErrors.configName = 'Configuration name cannot exceed 20 characters';
     }
@@ -36,7 +36,7 @@ const CreateConfig = () => {
     } else if (isNaN(formData.distance) || parseFloat(formData.distance) <= 0 || !/^\d+$/.test(formData.distance)) {
       newErrors.distance = 'Please enter a valid positive number';
     } else if (parseFloat(formData.distance) < 50 || parseFloat(formData.distance) > 500) {
-      newErrors.pathlength = 'Distance must be between 50mm and 500mm';
+      newErrors.distance = 'Distance must be between 50mm and 500mm';
     }
     
     // Validate Temperature (numeric)
@@ -44,7 +44,7 @@ const CreateConfig = () => {
       newErrors.temperature = 'Temperature is required';
     } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0 || !/^\d+$/.test(formData.temperature)) {
       newErrors.temperature = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 45) {
+    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 40) {
       newErrors.temperature = 'Temperature must be between 37°C and 40°C';
     }
     
@@ -65,8 +65,11 @@ const CreateConfig = () => {
     const { name, value } = e.target;
     
     // Validation based on field type
-    if (name === 'configName' && !/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
-      return; // Only allow alphabets for config name
+    if (name === 'configName') {
+      // Only allow alphabets for config name
+      if (!/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
+        return;
+      }
     }
     
     if (name === 'distance' || name === 'temperature' || name === 'peakForce') {
@@ -148,9 +151,6 @@ const CreateConfig = () => {
   const handleBack = () => {
     navigate('/main-menu');
   };
-  const shouldDisablePowerButton = () => {
-  return sensorData.status !== 'READY';
-}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
@@ -171,7 +171,9 @@ const CreateConfig = () => {
             {/* Help Button */}
             <button 
               onClick={() => setShowHelpModal(true)}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700
+               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center 
+               transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
@@ -182,34 +184,14 @@ const CreateConfig = () => {
                 window.close();
               }
             }}
-            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
+            className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
+            rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all 
+            duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
           >
             <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
           </button>
         </div>
         </div>
-
-        {/* Serial Port Error
-        {showSerialError && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
-                  <p className="text-red-600 text-sm mt-1">Please ensure the device is connected and try again.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowSerialError(false)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )} */}
-
         {/* Success Message */}
         {successMessage && (
           <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg shadow-sm">
@@ -268,15 +250,12 @@ const CreateConfig = () => {
                     Distance (mm)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     id="distance"
                     name="distance"
                     value={formData.distance}
                     onChange={handleInputChange}
                     placeholder="Enter distance in range (50mm - 500mm)"
-                    step="1"
-                    min="50"
-                    max="500"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.distance 
                         ? 'border-red-300 focus:border-red-500' 
@@ -297,15 +276,12 @@ const CreateConfig = () => {
                     Temperature (°C)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     id="temperature"
                     name="temperature"
                     value={formData.temperature}
                     onChange={handleInputChange}
                     placeholder="Enter temperature in range (37°C - 40°C)"
-                    step="1"
-                    min="37"
-                    max="40"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.temperature 
                         ? 'border-red-300 focus:border-red-500' 
@@ -327,15 +303,12 @@ const CreateConfig = () => {
                   Peak Force (N)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   id="peakForce"
                   name="peakForce"
                   value={formData.peakForce}
                   onChange={handleInputChange}
                   placeholder="Enter peak force in range (1N - 20N)"
-                  step="1"
-                  min="0"
-                  max="20"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                     errors.peakForce 
                       ? 'border-red-300 focus:border-red-500' 
@@ -355,7 +328,10 @@ const CreateConfig = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800
+                   disabled:from-blue-400 disabled:to-blue-500 text-white font-semibold py-4 px-8 rounded-xl 
+                   shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 
+                   disabled:transform-none flex items-center justify-center space-x-2 min-w-[140px]"
                 >
                   {isLoading ? (
                     <>
@@ -378,24 +354,6 @@ const CreateConfig = () => {
             </form>
           </div>
         </div>
-
-        {/* Info Card
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">Configuration Guidelines</h3>
-              <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Configuration Name must contain only alphabets (no numbers or special characters)</li>
-                <li>• All values are required and must be positive numbers</li>
-                <li>• Configuration will be saved to ConfigFile.csv</li>
-                <li>• Ensure serial port connection before creating configuration</li>
-              </ul>
-            </div>
-          </div>
-        </div> */}
          {showHelpModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl lg:rounded-3xl shadow-2xl max-w-md lg:max-w-lg w-full max-h-[80vh] overflow-hidden">
@@ -459,9 +417,7 @@ const CreateConfig = () => {
                     <p className="text-blue-800 text-sm lg:text-base">
                       Configuration will be <span className="font-semibold">saved to CTTM-100.csv</span>
                     </p>
-                  </div>
-                  
-                  
+                  </div>  
                 </div>
               </div>
             </div>

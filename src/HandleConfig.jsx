@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
+import { ArrowLeft, Power, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 
 const HandleConfig = ({ mode = 'load' }) => {
@@ -147,7 +147,9 @@ const HandleConfig = ({ mode = 'load' }) => {
             {/* Help Button */}
             <button 
               onClick={() => setShowHelpModal(true)}
-              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
+              className="group bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700
+               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center 
+               transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-blue-400/30"
             >
               <Info className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
@@ -160,33 +162,15 @@ const HandleConfig = ({ mode = 'load' }) => {
                   window.close();
                 }
               }}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700
+               text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center 
+               justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border
+                border-red-400/30"
             >
               <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
             </button>
           </div>
         </div>
-
-        {/* Serial Port Error (only for Load mode)
-        {showSerialError && mode === 'load' && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
-                  <p className="text-red-600 text-sm mt-1">Please ensure the device is connected and try again.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowSerialError(false)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -196,7 +180,9 @@ const HandleConfig = ({ mode = 'load' }) => {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="w-full bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-4 text-left flex items-center justify-between hover:from-blue-100 hover:to-blue-150 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="w-full bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl
+                   p-4 text-left flex items-center justify-between hover:from-blue-100 hover:to-blue-150 transition-all 
+                   duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <div className="flex items-center space-x-3">
                     <FileText className="w-5 h-5 text-blue-600" />
@@ -223,7 +209,8 @@ const HandleConfig = ({ mode = 'load' }) => {
                         <button
                           key={index}
                           onClick={() => handleConfigSelection(config)}
-                          className="w-full p-4 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors duration-150 focus:outline-none focus:bg-blue-50"
+                          className="w-full p-4 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors 
+                          duration-150 focus:outline-none focus:bg-blue-50"
                         >
                           <div>
                             <p className="font-medium text-slate-800">{config.configName}</p>
@@ -307,32 +294,13 @@ const HandleConfig = ({ mode = 'load' }) => {
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
                   />
                 </div>
-
-                {/* Action Button */}
-                {/* <div className="pt-6">
-                  <button
-                    onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
-                    disabled={!selectedConfig || isLoading}
-                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        {getButtonIcon()}
-                        <span>{getButtonText()}</span>
-                      </>
-                    )}
-                  </button>
-                </div> */}
                 <div className="pt-6">
                   <button
                     onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
                     disabled={!selectedConfig || isLoading}
-                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
+                    className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500
+                     text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 
+                     transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
                   >
                     {getButtonIcon()}
                     <span>{getButtonText()}</span>
@@ -342,37 +310,6 @@ const HandleConfig = ({ mode = 'load' }) => {
             </div>
           </div>
         </div>
-
-        {/* Info Card
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 md:p-6">
-          <div className="flex items-start space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-blue-900 mb-2">
-                {mode === 'load' ? 'Load Configuration Info' : 'Delete Configuration Warning'}
-              </h3>
-              <ul className="text-blue-800 text-sm space-y-1">
-                {mode === 'load' ? (
-                  <>
-                    <li>• Select a configuration from the dropdown to load its settings</li>
-                    <li>• All configuration values will be populated automatically</li>
-                    <li>• Click "Process Mode" to continue with the selected configuration</li>
-                    <li>• Ensure serial port connection is active before processing</li>
-                  </>
-                ) : (
-                  <>
-                    <li>• Select a configuration to delete from your saved configurations</li>
-                    <li>• This action cannot be undone - deleted configurations are permanently removed</li>
-                    <li>• Make sure you have backups of important configurations</li>
-                    <li>• Confirmation will be required before deletion</li>
-                  </>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div> */}
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -399,7 +336,8 @@ const HandleConfig = ({ mode = 'load' }) => {
               <button
                 onClick={handleDeleteConfig}
                 disabled={isLoading}
-                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium rounded-xl 
+                transition-colors flex items-center justify-center space-x-2"
               >
                 {isLoading ? (
                   <>

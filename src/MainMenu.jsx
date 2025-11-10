@@ -88,10 +88,6 @@ const MainMenu = () => {
     }
   };
 
-  // const handleBackClick = () => {
-  //   console.log('Back to previous screen');
-  // };
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
       {/* Header */}
