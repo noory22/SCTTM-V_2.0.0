@@ -77,49 +77,6 @@ const ProcessMode = () => {
     }
   }, []);
 
-  //-----------------------------------------------------------------//
-  // Temperature monitoring effect
-  // useEffect(() => {
-  //   if (!selectedConfig || sensorData.temperature === '--') return;
-
-  //   const currentTemp = parseFloat(sensorData.temperature);
-  //   const targetTemp = parseFloat(selectedConfig.temperature);
-
-  //   if (isNaN(currentTemp) || isNaN(targetTemp)) return;
-
-  //   console.log(`🌡️ Temperature Check: Current=${currentTemp}°C, Target=${targetTemp}°C`);
-
-  //   if (currentTemp < targetTemp) {
-  //     // Temperature is below target
-  //     if (!temperatureStatus.isHeatingRequired) {
-  //       setTemperatureStatus({
-  //         isHeatingRequired: true,
-  //         isHeatingComplete: false,
-  //         showHeaterDialog: true,
-  //         dialogMessage: `Real-time temperature (${currentTemp}°C) is less than required (${targetTemp}°C). Please turn ON the heater.`,
-  //         dialogType: 'heating-required',
-  //         heaterButtonDisabled: false,
-  //         targetTemperature: targetTemp
-  //       });
-  //       console.log('🔥 Heating required - showing dialog');
-  //     }
-  //   } else {
-  //     // Temperature reached or exceeded target
-  //     if (temperatureStatus.isHeatingRequired && !temperatureStatus.isHeatingComplete) {
-  //       setTemperatureStatus({
-  //         isHeatingRequired: false,
-  //         isHeatingComplete: true,
-  //         showHeaterDialog: true,
-  //         dialogMessage: `Real-time temperature (${currentTemp}°C) has reached the required level (${targetTemp}°C). Please turn OFF the heater.`,
-  //         dialogType: 'heating-complete',
-  //         heaterButtonDisabled: false,
-  //         targetTemperature: targetTemp
-  //       });
-  //       console.log('✅ Heating complete - showing turn off dialog');
-  //     }
-  //   }
-  // }, [sensorData.temperature, selectedConfig, temperatureStatus.isHeatingRequired, temperatureStatus.isHeatingComplete]);
-  //-----------------------------------------------------------------//
     //-----------------------------------------------------------------//
   // Temperature monitoring effect - UPDATED
   useEffect(() => {
@@ -287,61 +244,6 @@ const ProcessMode = () => {
     }
   };
   //---------------------------------------------------------------------------------//
-  // Heater Control Functions
-  // const handleHeaterOn = async () => {
-  //   try {
-  //     // Disable button immediately
-  //     setTemperatureStatus(prev => ({
-  //       ...prev,
-  //       heaterButtonDisabled: true
-  //     }));
-      
-  //     console.log('🔥 Turning heater ON...');
-  //     await window.serialAPI.controlHeater('on');
-  //     console.log('✅ Heater ON command sent');
-      
-  //   } catch (error) {
-  //     console.error('❌ Failed to turn heater ON:', error);
-  //   }
-  // };
-
-  // const handleHeaterOff = async () => {
-  //   try {
-  //     // Disable button immediately
-  //     setTemperatureStatus(prev => ({
-  //       ...prev,
-  //       heaterButtonDisabled: true
-  //     }));
-      
-  //     console.log('🔥 Turning heater OFF...');
-  //     await window.serialAPI.controlHeater('off');
-      
-  //     // Close dialog and enable start button
-  //     setTemperatureStatus({
-  //       isHeatingRequired: false,
-  //       isHeatingComplete: false,
-  //       showHeaterDialog: false,
-  //       dialogMessage: '',
-  //       dialogType: '',
-  //       heaterButtonDisabled: false,
-  //       targetTemperature: null
-  //     });
-  //     console.log('✅ Heater OFF command sent, dialog closed');
-      
-  //   } catch (error) {
-  //     console.error('❌ Failed to turn heater OFF:', error);
-  //   }
-  // };
-
-  // const closeHeaterDialog = () => {
-  //   // Only allow closing for heating-complete dialog, not for heating-required
-  //   if (temperatureStatus.dialogType === 'heating-complete') {
-  //     setTemperatureStatus(prev => ({
-  //       ...prev,
-  //       showHeaterDialog: false
-  //     }));
-  //   }
-  // };
   // Heater Control Functions - UPDATED
   const handleHeaterOn = async () => {
     try {
@@ -767,7 +669,7 @@ const ProcessMode = () => {
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Target Temperature</p>
+                    <p className="text-sm text-gray-600 mb-1">User-Defined Temperature</p>
                     <div className="flex items-center justify-center space-x-2">
                       <Flame className="w-5 h-5 text-orange-600" />
                       <p className="text-2xl font-bold text-orange-700">
@@ -925,10 +827,6 @@ const ProcessMode = () => {
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span><strong>Sample Placement:</strong> Verify sample is properly positioned and secured</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="font-bold mt-1">•</span>
-                    <span><strong>Emergency Stop:</strong> Know the location of emergency stop button</span>
                   </li>
                 </ul>
               </div>
@@ -1531,10 +1429,10 @@ const ProcessMode = () => {
             <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
               <button
                 onClick={handleStart}
-                disabled={shouldDisableButtons()}
+                disabled={shouldDisableButtons() || (isProcessRunning && !isPaused)}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 
                   rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableButtons()
+                  shouldDisableButtons() || (isProcessRunning && !isPaused)
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
                 }`}

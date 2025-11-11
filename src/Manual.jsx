@@ -400,28 +400,27 @@ const Manual = () => {
               <div className="flex justify-center space-x-4 mb-4">
                 <button
                   onClick={() => moveCatheter('backward')}
-                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center
-                   text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  disabled={controls.homing}
+                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl ${
+                    controls.homing
+                      ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={() => moveCatheter('forward')}
-                  className="w-16 h-16 bg-white border-4 border-slate-300 rounded-full flex items-center justify-center
-                   text-slate-600 hover:border-slate-400 hover:bg-slate-50 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  disabled={controls.homing}
+                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl ${
+                    controls.homing
+                      ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>
               </div>
-              
-              {/* Position indicator */}
-              <div className="w-full bg-slate-200 rounded-full h-2 mb-2">
-                <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                  style={{ width: `${catheterPosition}%` }}
-                ></div>
-              </div>
-              <p className="text-center text-slate-600 text-sm">Position: {catheterPosition}%</p>
             </div>
 
             {/* Heater and Homing */}
@@ -495,7 +494,7 @@ const Manual = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Homing:</span>
                   <span className={`font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
-                    {controls.homing ? 'ACTIVE' : 'IDLE'}
+                    {controls.homing ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
               </div>
