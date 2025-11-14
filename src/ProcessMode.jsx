@@ -688,7 +688,10 @@ const ProcessMode = () => {
                 <Flame className="w-6 h-6 text-white" />
                 <h2 className="text-xl font-bold text-white">
                   {temperatureStatus.dialogType === 'heating-required' 
-                    ? (temperatureStatus.wasTemperatureDrop ? 'Process Auto-Paused' : 'Heating Required')
+                    ? (temperatureStatus.wasTemperatureDrop 
+                        ? (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Process Auto-Paused')
+                        : (temperatureStatus.heaterButtonDisabled ? 'Heating' : 'Heating Required')
+                      )
                     : 'Heating Complete'}
                 </h2>
               </div>
@@ -763,9 +766,38 @@ const ProcessMode = () => {
                   </p>
                 )}
               </div>
+
+              {/* NEW: Waiting message when heater is ON */}
+              {temperatureStatus.dialogType === 'heating-required' && temperatureStatus.heaterButtonDisabled && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-center space-x-2 mb-2">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <Flame className="w-3 h-3 text-white" />
+                    </div>
+                    <p className="text-blue-700 font-bold text-lg">Heater is ON</p>
+                  </div>
+                  <p className="text-blue-600 text-center text-sm">
+                    Waiting for real-time temperature to reach {temperatureStatus.targetTemperature || selectedConfig?.temperature}°C
+                  </p>
+                  <p className="text-blue-500 text-center text-xs mt-1">
+                    Current: {sensorData.temperature}°C
+                  </p>
+                </div>
+              )}
               
-              {/* Action Button */}
+              {/* Action Buttons - UPDATED WITH CANCEL BUTTON */}
               <div className="flex space-x-3">
+                {/* NEW: Cancel Button - Only show for heating-required and when heater is not turned on yet */}
+                {temperatureStatus.dialogType === 'heating-required' && !temperatureStatus.heaterButtonDisabled && (
+                  <button
+                    onClick={handleBack}
+                    className="flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                    <span>Cancel</span>
+                  </button>
+                )}
+                
                 {temperatureStatus.dialogType === 'heating-required' ? (
                   <button
                     onClick={handleHeaterOn}
@@ -778,7 +810,7 @@ const ProcessMode = () => {
                   >
                     <Flame className="w-5 h-5" />
                     <span>
-                      {temperatureStatus.heaterButtonDisabled ? 'Turning ON...' : 'Turn Heater ON'}
+                      {temperatureStatus.heaterButtonDisabled ? 'Turned ON...' : 'Turn Heater ON'}
                     </span>
                   </button>
                 ) : (
@@ -793,7 +825,7 @@ const ProcessMode = () => {
                   >
                     <Flame className="w-5 h-5" />
                     <span>
-                      {temperatureStatus.heaterButtonDisabled ? 'Turning OFF...' : 'Turn Heater OFF'}
+                      {temperatureStatus.heaterButtonDisabled ? 'Turned OFF...' : 'Turn Heater OFF'}
                     </span>
                   </button>
                 )}

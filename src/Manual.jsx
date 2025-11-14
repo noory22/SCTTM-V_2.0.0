@@ -15,6 +15,10 @@ const Manual = () => {
     homing: false
   });
   const [catheterPosition, setCatheterPosition] = useState(0);
+  const [motorState, setMotorState] = useState({
+    forward: false,
+    backward: false
+  });
 
   // Setup serial communication listeners
   useEffect(() => {
@@ -136,10 +140,25 @@ const Manual = () => {
 
   const moveCatheter = async (direction) => {
     try {
-      // Send motor command via serial
       await window.serialAPI.moveMotor(direction);
+
+      // UI toggle logic
+      setMotorState(prev => {
+        if (direction === "forward") {
+          return {
+            forward: !prev.forward,   // toggle forward
+            backward: false           // turn off backward
+          };
+        } else {
+          return {
+            forward: false,
+            backward: !prev.backward  // toggle backward
+          };
+        }
+      });
+
     } catch (error) {
-      console.error('Motor movement error:', error);
+      console.error("Motor movement error:", error);
       setShowSerialError(true);
     }
   };
@@ -400,23 +419,23 @@ const Manual = () => {
               <div className="flex justify-center space-x-4 mb-4">
                 <button
                   onClick={() => moveCatheter('backward')}
-                  disabled={controls.homing}
-                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl ${
-                    controls.homing
+                  disabled={controls.homing || motorState.forward}
+                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
+                    ${controls.homing || motorState.forward
                       ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
-                  }`}
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'}
+                  `}
                 >
                   <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
                   onClick={() => moveCatheter('forward')}
-                  disabled={controls.homing}
-                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl ${
-                    controls.homing
+                  disabled={controls.homing || motorState.backward}
+                  className={`w-16 h-16 border-4 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl
+                    ${controls.homing || motorState.backward
                       ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'
-                  }`}
+                      : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50'}
+                  `}
                 >
                   <ChevronRight className="w-6 h-6" />
                 </button>

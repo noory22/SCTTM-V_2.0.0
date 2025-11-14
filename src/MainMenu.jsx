@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {Power} from 'lucide-react';
+import {Power, LogOut, X} from 'lucide-react';
 
 const MainMenu = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [isHovering, setIsHovering] = useState(null);
   const navigate = useNavigate();
+  const [showPowerDropdown, setShowPowerDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   const menuOptions = [
     {
@@ -66,6 +68,19 @@ const MainMenu = () => {
       gradient: 'from-red-500 to-rose-500'
     }
   ];
+ // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowPowerDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleOptionClick = (option) => {
     setSelectedOption(option.id);
@@ -87,6 +102,26 @@ const MainMenu = () => {
       navigate('/process-logs');
     }
   };
+  const handleExit = () => {
+    const confirmed = window.confirm("Are you sure you want to exit?");
+    if (confirmed) {
+      window.close();
+    }
+    setShowPowerDropdown(false);
+  };
+
+  const handleLogout = () => {
+    navigate('/');
+    setShowPowerDropdown(false);
+  };
+
+  // const handleCancel = () => {
+  //   setShowPowerDropdown(false);
+  // };
+
+  const togglePowerDropdown = () => {
+    setShowPowerDropdown(!showPowerDropdown);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex-shrink-0 ">
@@ -100,19 +135,57 @@ const MainMenu = () => {
         <p className="text-sm text-gray-500 mt-1">Select an option to continue</p>
       </div>
       
-      <div className="flex items-center gap-6">
-        <button
-          onClick={() => {
-            const confirmed = window.confirm("Are you sure you want to exit?");
-            if (confirmed) {
-              window.close();
-            }
-          }}
-          className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0"
-        >
-          <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-        </button>
-      </div>
+      <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={togglePowerDropdown}
+              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 flex-shrink-0 z-40"
+            >
+              <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+            </button>
+
+            {/* Dropdown Menu - Enhanced with higher z-index */}
+            {showPowerDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 z-50 overflow-hidden transform origin-top-right animate-in fade-in-0 zoom-in-95 duration-200">
+                {/* Dropdown Header */}
+                <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100/80 border-b border-gray-200/50">
+                  <p className="text-sm font-semibold text-gray-700">Power Options</p>
+                </div>
+                
+                {/* Exit Button */}
+                <button
+                  onClick={handleExit}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-left text-red-600 hover:bg-red-50/80 transition-all duration-200 border-b border-gray-100/50 group"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
+                    <X className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-semibold block">Exit</span>
+                    <span className="text-xs text-red-500">Close the application</span>
+                  </div>
+                </button>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-left text-blue-600 hover:bg-blue-50/80 transition-all duration-200 border-b border-gray-100/50 group"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                    <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-semibold block">Logout</span>
+                    <span className="text-xs text-blue-500">Return to login screen</span>
+                  </div>
+                </button>
+                {/* Dropdown decoration */}
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-500 via-blue-500 to-gray-500 opacity-30 rounded-l-lg"></div>
+                
+                {/* Dropdown arrow */}
+                <div className="absolute -top-2 right-4 w-4 h-4 bg-white/95 backdrop-blur-xl transform rotate-45 border-t border-l border-gray-200/50"></div>
+              </div>
+            )}
+          </div>
     </header>
 
       {/* Main Content */}
