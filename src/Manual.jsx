@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCw, Camera, Flame, Usb, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCw, Camera, Flame, Usb, AlertTriangle, Move } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts";
 
 const Manual = () => {
   const videoRef = useRef(null);
@@ -14,6 +23,17 @@ const Manual = () => {
     heater: false,
     homing: false
   });
+// ----------------------------------------------
+  // const [catheterDistance, setCatheterDistance] = useState(0);
+  const [manualDistance, setManualDistance] = useState(0);
+  const [graphData, setGraphData] = useState([]);
+  const [movementDirection, setMovementDirection] = useState("forward");
+  const forwardData = graphData.filter(p => p.direction === "forward");
+  const backwardData = graphData.filter(p => p.direction === "backward");
+
+// --------------------------------------------
+
+
   const [catheterPosition, setCatheterPosition] = useState(0);
   const [motorState, setMotorState] = useState({
     forward: false,
@@ -149,7 +169,7 @@ const Manual = () => {
         if (result && result.success) {
           setControls(prev => ({ ...prev, heater: result.heating }));
           console.log('Heater toggled to:', result.heating, 'Result:', result);
-        } else {
+        }else {
           throw new Error(result?.message || 'Heater operation failed');
         }
       }
@@ -216,7 +236,7 @@ const Manual = () => {
             const newInsertionState = result.insertionState === "ON";
             setMotorState({ forward: newInsertionState, backward: false });
             console.log('Insertion activated:', newInsertionState, 'Result:', result);
-          } else {
+          }else {
             throw new Error(result.message || 'Insertion failed');
           }
         }
@@ -228,7 +248,8 @@ const Manual = () => {
             const newRetState = result.retState === "ON";
             setMotorState({ forward: false, backward: newRetState });
             console.log('Retraction toggled:', newRetState, 'Result:', result);
-          } else {
+          } 
+          else {
             throw new Error(result.message || 'Retraction operation failed');
           }
         } else {
@@ -371,9 +392,68 @@ const Manual = () => {
           
           // Convert distance to position percentage (assuming 1000mm max)
           const maxDistance = 1000;
+          // --------------------------------------------------------
           const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
           setCatheterPosition(positionPercent);
-          
+          setManualDistance(data.manualDistance || 0);
+
+          // ---------------- GRAPH DATA UPDATE ----------------
+// ---------------- MANUAL GRAPH DATA UPDATE ----------------
+          // X-axis: manual distance (D550)
+          // Y-axis: force (mN)
+          // setGraphData(prev => {
+          //   const x = Number(data.manualDistance);
+          //   const y = Number(data.force_mN);
+
+          //   // Safety: ignore invalid values
+          //   if (isNaN(x) || isNaN(y)) return prev;
+
+          //   const newPoint = {
+          //     manualDistance: x,
+          //     force: y,
+          //     ts: Date.now()
+          //   };
+
+          //   const updated = [...prev, newPoint];
+
+          //   // Keep last 200 points only (prevents lag / blinking)
+          //   return updated.length > 200
+          //     ? updated.slice(updated.length - 200)
+          //     : updated;
+          // });
+
+          setGraphData(prev => {
+            const x = Number(data.manualDistance);
+            const y = Number(data.force_mN);
+
+            if (isNaN(x) || isNaN(y)) return prev;
+
+            let direction = "forward";
+
+            if (prev.length > 0) {
+              const lastX = prev[prev.length - 1].manualDistance;
+              direction = x < lastX ? "backward" : "forward";
+            }
+
+            const newPoint = {
+              manualDistance: x,
+              force: y,
+              direction, // 👈 VERY IMPORTANT
+            };
+
+            const updated = [...prev, newPoint];
+
+            return updated.length > 200
+              ? updated.slice(updated.length - 200)
+              : updated;
+          });
+
+
+
+
+
+
+        // ------------------------------------------------  
           // Update data source indicator
           if (data.isSimulated && connectionStatus.dataSource !== 'simulated') {
             setConnectionStatus(prev => ({ ...prev, dataSource: 'simulated' }));
@@ -595,6 +675,65 @@ const Manual = () => {
                 )}
               </div>
 
+              {/* Manual Distance Graph */}
+              <div className="bg-white border-t border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">
+                  Manual Distance vs Force 
+                </h3>
+
+                <div className="w-full h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={graphData}
+                      margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+
+                      <XAxis
+                        dataKey="manualDistance"
+                        type="number"
+                        label={{ value: "Manual Distance (mm)", position: "insideBottom", offset: -10 }}
+                        tick={{ fontSize: 11 }}
+                      />
+
+                      <YAxis
+                        label={{ value: "Force (mN)", angle: -90, position: "insideLeft" }}
+                        tick={{ fontSize: 11 }}
+                      />
+
+                      <Tooltip
+                        formatter={(value) => [`${value} mN`, "Force"]}
+                        labelFormatter={(label) =>
+                          `Manual Distance: ${label} mm`
+                        }
+                      />
+
+                      <Line
+                        type="monotone"
+                        data={forwardData}
+                        dataKey="force"
+                        stroke="#3b82f6"  
+                        strokeWidth={2.5}
+                        dot={false}
+                        isAnimationActive={false}   // 🚨 stops blinking
+                      />
+
+                      {/* Backward movement (left / retraction) */}
+                      <Line
+                        type="monotone"
+                        data={backwardData}
+                        dataKey="force"
+                        stroke="#ef4444"   // red
+                        strokeWidth={2.5}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+
               {/* Sensor Readings */}
               <div className="p-6 bg-slate-50 border-t border-slate-200">
                 <div className="grid grid-cols-2 gap-6">
@@ -631,19 +770,44 @@ const Manual = () => {
                         <div className="w-8 h-2 bg-blue-200 rounded-full">
                           <div 
                             className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(100, (force / 10000) * 100)}%` }}
+                            style={{ width: `${Math.min(100, (force / 2000) * 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-slate-800 font-bold text-lg">{force.toFixed(0)} mN</span>
+
+                        <span className="text-slate-800 font-bold text-lg">{force.toFixed(2)} mN</span>
                       </div>
+
                       {connectionStatus.dataSource === 'simulated' && (
                         <p className="text-xs text-blue-500 mt-1">Simulated Data</p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
-                        ≈ {(force / 1000).toFixed(2)} N
+                        ≈ {(force / 1000).toFixed(4)} N
                       </p>
                     </div>
                   </div>
+
+                  {/* Manual Movement Distance */}
+                  <div className="flex items-center space-x-4 mt-3">
+                    <div className="p-3 bg-emerald-100 rounded-xl">
+                      <Move className="w-6 h-6 text-emerald-600" />
+                    </div>
+
+                    <div>
+                      <p className="text-slate-600 text-sm font-medium">Movement Distance</p>
+
+                      <span className="text-slate-800 font-bold text-lg">
+                        {manualDistance} mm
+                      </span>
+
+                      {connectionStatus.dataSource === 'simulated' && (
+                        <p className="text-xs text-emerald-500 mt-1">Simulated Data</p>
+                      )}
+                    </div>
+                  </div>
+
+
+
+
                 </div>
               </div>
             </div>

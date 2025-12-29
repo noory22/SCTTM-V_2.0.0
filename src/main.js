@@ -31,6 +31,7 @@ const COIL_CLAMP = 2007;
 const REG_DISTANCE   = 70;  // 1 register (16-bit integer) - UPDATED
 const REG_FORCE      = 54;    // 2 registers (32-bit float) - UPDATED
 const REG_TEMP    = 501;// 
+const REG_MANUAL_DISTANCE = 6550;
 let mainWindow;
 let isConnected = false;
 let dataReadingActive = false;
@@ -347,21 +348,10 @@ async function safeReadRegisters(address, count) {
 // -------------------------
 async function readPLCData() {
   if (!isConnected) {
-    // Return simulated data when not connected
-    const simulatedDistance = Math.floor(Math.random() * 1000);
-    const simulatedForce = 1000 + (Math.random() * 5000); // Simulated force in mN
-    const simulatedTemp = 20 + (Math.random() * 10); // Simulated temperature in °C
-    
+    // Connection not established
     return {
-      success: true,
-      isSimulated: true,
-      distance: simulatedDistance,
-      distanceDisplay: `${simulatedDistance} mm`,
-      force_mN: simulatedForce,
-      forceDisplay: `${simulatedForce.toFixed(2)} mN`,
-      temperature: simulatedTemp,
-      temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
-      message: 'Using simulated data - Modbus not connected'
+      success: false,
+      message: 'Not connected to PLC'
     };
   }
   
@@ -373,17 +363,34 @@ async function readPLCData() {
     // Read force (32-bit float, already in mN)
     const forceResult = await safeReadRegisters(REG_FORCE, 2);
     const forceRegisters = forceResult.data;
+    const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
     
-    // Read temperature (assuming 16-bit integer, already in °C)
+    // Read temperature (16-bit integer, already in °C)
     const tempResult = await safeReadRegisters(REG_TEMP, 1);
     const temperatureC = tempResult.data[0];
-    
-    // Convert force registers to float
-    const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
+
+    const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
+    const manualDistance = manualDistanceResult.data[0];
+
+     // 🔍 DEBUG LOG — ADD THIS SECTION
+    console.log("=========================================");
+    console.log(" PLC LIVE DATA RECEIVED");
+    console.log("-----------------------------------------");
+    console.log("RAW REGISTERS:");
+    console.log("  Distance (70):", distanceMM);
+    console.log("  Force (54,55):", forceRegisters);
+    console.log("  Temperature (501):", temperatureC);
+    console.log("-----------------------------------------");
+    console.log("DECODED VALUES:");
+    console.log(`  Distance:      ${distanceMM} mm`);
+    console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
+    // console.log(`  Temperature:   ${temperatureC} °C`);
+    console.log(`  Temperature Display: ${temperatureC.toFixed(1)} °C`);
+    console.log(" Manual Distance:", manualDistance);
+    console.log("=========================================");
     
     return {
       success: true,
-      isSimulated: false,
       // Distance data - already in mm
       distance: distanceMM,
       distanceDisplay: `${distanceMM} mm`,
@@ -395,37 +402,28 @@ async function readPLCData() {
       // Temperature data - already in °C
       temperature: temperatureC,
       temperatureDisplay: `${temperatureC} °C`,
+
+      manualDistance: manualDistance,   // NEW
+      manualDistanceDisplay: `${manualDistance} mm`,  // NEW
       
       // Raw data for debugging
       rawRegisters: {
         distance: distanceMM,
         force: forceRegisters,
-        temperature: temperatureC
+        temperature: temperatureC,
+        manualDistance: manualDistance
       }
     };
     
   } catch (err) {
     console.error("❌ Error reading PLC data:", err.message);
     
-    // Fallback to simulated data on read error
-    const simulatedDistance = Math.floor(Math.random() * 1000);
-    const simulatedForce = 1000 + (Math.random() * 5000);
-    const simulatedTemp = 20 + (Math.random() * 10);
-    
     return {
-      success: true,
-      isSimulated: true,
-      distance: simulatedDistance,
-      distanceDisplay: `${simulatedDistance} mm`,
-      force_mN: simulatedForce,
-      forceDisplay: `${simulatedForce.toFixed(2)} mN`,
-      temperature: simulatedTemp,
-      temperatureDisplay: `${simulatedTemp.toFixed(1)} °C`,
-      message: `Using simulated data: ${err.message}`
+      success: false,
+      message: `Failed to read PLC data: ${err.message}`
     };
   }
-}
-// // Add this function to main.js
+}// // Add this function to main.js
 // async function debugRegisters() {
 //   try {
 //     console.log("=== DEBUG REGISTER VALUES ===");
@@ -623,6 +621,7 @@ ipcMain.handle("start", async () => {
     await client.writeCoil(COIL_STOP, false);
     await client.writeCoil(COIL_RESET, false);
     await client.writeCoil(COIL_START, true);
+    await client.writeCoil(COIL_RETRACTION, false);
     
     return { startInitiated: true };
   });
@@ -634,6 +633,8 @@ ipcMain.handle("stop", async () => {
     
     await client.writeCoil(COIL_START, false);
     await client.writeCoil(COIL_STOP, true);
+    await client.writeCoil(COIL_RETRACTION, false);
+
     
     return { stopPressed: true };
   });
@@ -667,6 +668,8 @@ ipcMain.handle("retraction", async () => {
 
     coilState.retraction = !coilState.retraction;
     await client.writeCoil(COIL_RETRACTION, coilState.retraction);
+    await client.writeCoil(COIL_STOP, false);
+    await client.writeCoil(COIL_START, false);
 
     return { retraction: coilState.retraction };
   });
@@ -955,6 +958,172 @@ ipcMain.handle("send-process-mode", async (event, config) => {
     return false;
   }
 });
+
+// ipcMain.handle("send-process-mode", async (event, config) => {
+//   try {
+//     console.log('🔧 Process mode config received:', config);
+    
+//     if (!isConnected || !client.isOpen) {
+//       console.error('❌ Cannot send process mode: Modbus not connected');
+//       return false;
+//     }
+    
+//     // Parse configuration values
+//     const pathLength = parseInt(config.pathlength);
+//     const thresholdForce = parseFloat(config.thresholdForce); // mN
+//     const temperature = parseFloat(config.temperature); // °C
+//     const retractionLength = parseFloat(config.retractionLength); // mm
+    
+//     console.log('📊 Parsed config values:', {
+//       pathLength: `${pathLength} mm`,
+//       thresholdForce: `${thresholdForce} mN`,
+//       temperature: `${temperature} °C`,
+//       retractionLength: `${retractionLength} mm`
+//     });
+    
+//     // Validate values
+//     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
+//       console.error('❌ Invalid configuration values');
+//       return false;
+//     }
+    
+//     // Prepare all write operations to run in parallel
+//     const writeOperations = [
+//       {
+//         name: 'Path Length',
+//         address: 6000,
+//         value: pathLength,
+//         description: `${pathLength} mm`
+//       },
+//       {
+//         name: 'Threshold Force',
+//         address: 150,
+//         value: Math.round(thresholdForce),
+//         description: `${thresholdForce} mN`
+//       },
+//       {
+//         name: 'Temperature',
+//         address: 510,
+//         value: Math.round(temperature * 10), // Store with 0.1°C precision
+//         description: `${temperature} °C`
+//       },
+//       {
+//         name: 'Retraction Stroke Length',
+//         address: 122,
+//         value: Math.round(retractionLength),
+//         description: `${retractionLength} mm`
+//       }
+//     ];
+    
+//     console.log('🚀 Starting parallel write operations...');
+    
+//     // Execute all writes in parallel
+//     const writePromises = writeOperations.map(async (operation) => {
+//       try {
+//         console.log(`📝 Writing ${operation.name}: ${operation.description} to address ${operation.address}`);
+//         await client.writeRegister(operation.address, operation.value);
+//         console.log(`✅ ${operation.name} written successfully`);
+//         return {
+//           name: operation.name,
+//           address: operation.address,
+//           value: operation.value,
+//           success: true,
+//           error: null
+//         };
+//       } catch (error) {
+//         console.error(`❌ Error writing ${operation.name} to address ${operation.address}:`, error.message);
+//         return {
+//           name: operation.name,
+//           address: operation.address,
+//           value: operation.value,
+//           success: false,
+//           error: error.message
+//         };
+//       }
+//     });
+    
+//     // Wait for all write operations to complete
+//     const results = await Promise.allSettled(writePromises);
+    
+//     // Process results
+//     const successfulWrites = [];
+//     const failedWrites = [];
+    
+//     results.forEach((result, index) => {
+//       if (result.status === 'fulfilled') {
+//         const operationResult = result.value;
+//         if (operationResult.success) {
+//           successfulWrites.push(operationResult);
+//         } else {
+//           failedWrites.push(operationResult);
+//         }
+//       } else {
+//         failedWrites.push({
+//           name: writeOperations[index].name,
+//           address: writeOperations[index].address,
+//           error: result.reason?.message || 'Unknown error'
+//         });
+//       }
+//     });
+    
+//     console.log('📋 Write operation summary:', {
+//       total: writeOperations.length,
+//       successful: successfulWrites.length,
+//       failed: failedWrites.length
+//     });
+    
+//     if (failedWrites.length > 0) {
+//       console.error('⚠️ Some writes failed:', failedWrites);
+//     }
+    
+//     // Optional: Parallel verification (if all writes succeeded)
+//     if (failedWrites.length === 0) {
+//       console.log('🔄 Starting parallel verification...');
+      
+//       const verifyPromises = writeOperations.map(async (operation) => {
+//         try {
+//           const readResult = await client.readHoldingRegisters(operation.address, 1);
+//           const readValue = readResult.data[0];
+//           const matches = readValue === operation.value;
+          
+//           console.log(`🔍 ${operation.name}: written=${operation.value}, read=${readValue}, match=${matches}`);
+          
+//           return {
+//             name: operation.name,
+//             address: operation.address,
+//             written: operation.value,
+//             read: readValue,
+//             match: matches
+//           };
+//         } catch (error) {
+//           console.error(`❌ Error verifying ${operation.name}:`, error.message);
+//           return {
+//             name: operation.name,
+//             address: operation.address,
+//             error: error.message
+//           };
+//         }
+//       });
+      
+//       const verifyResults = await Promise.allSettled(verifyPromises);
+//       const allVerified = verifyResults.every(result => 
+//         result.status === 'fulfilled' && result.value.match !== false
+//       );
+      
+//       if (allVerified) {
+//         console.log('✅ All values verified successfully!');
+//       } else {
+//         console.warn('⚠️ Verification shows some values may not match');
+//       }
+//     }
+    
+//     return failedWrites.length === 0;
+    
+//   } catch (error) {
+//     console.error('❌ Error sending process mode:', error);
+//     return false;
+//   }
+// });
 
 // ============================
 // CSV LOGGING IPC
