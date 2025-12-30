@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld("api", {
   startCSV: (config) => ipcRenderer.invoke("csv-start", config),
   appendCSV: (payload) => ipcRenderer.invoke("csv-append", payload),
   stopCSV: () => ipcRenderer.invoke("csv-stop"),
+  // ============= LOG FILE MANAGEMENT =============
+  getLogFiles: () => ipcRenderer.invoke("get-log-files"),
+  readLogFile: (filePath) => ipcRenderer.invoke("read-log-file", filePath),
+  deleteLogFile: (filePath) => ipcRenderer.invoke("delete-log-file", filePath),
   
   // ============= DATA FUNCTIONS =============
   readData: () => ipcRenderer.invoke("read-data"),

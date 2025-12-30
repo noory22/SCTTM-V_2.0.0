@@ -185,7 +185,7 @@ async function startCSVLogging(config) {
 
     // CSV HEADER
     csvStream.write(
-      "Timestamp,Distance(mm),Force(mN),Temperature(°C),ConfigName,PathLength,ThresholdForce,NumberOfCurves,CurveDistances\n"
+      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,BathTemperature,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
     );
 
     return { success: true, filePath: csvFilePath };
@@ -209,6 +209,8 @@ async function appendCSVData(data, config) {
       config.configName,
       config.pathlength,
       config.thresholdForce,
+      config.temperature,
+      config.retractionLength,
       config.numberOfCurves,
       JSON.stringify(config.curveDistances || {})
     ].join(",") + "\n";
@@ -229,6 +231,153 @@ async function stopCSVLogging() {
     }
     return { success: true };
   } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ============================
+// CSV LOGGING - FILE READING FUNCTIONS
+// ============================
+
+async function getLogFiles() {
+  try {
+    const logsDir = path.join(app.getPath("documents"), "SCTTM_Logs");
+    
+    if (!fs.existsSync(logsDir)) {
+      return [];
+    }
+    
+    const files = await fsPromises.readdir(logsDir);
+    const csvFiles = files.filter(file => file.endsWith('.csv'));
+    
+    const logFiles = [];
+    
+    for (const file of csvFiles) {
+      const filePath = path.join(logsDir, file);
+      const stats = await fsPromises.stat(filePath);
+      
+      // Extract configuration name and timestamp from filename
+      const fileNameWithoutExt = file.replace('.csv', '');
+      const parts = fileNameWithoutExt.split('_');
+      const configName = parts.slice(0, -1).join('_');
+      const timestamp = parts[parts.length - 1];
+      
+      logFiles.push({
+        filename: file,
+        displayName: `${configName} - ${new Date(timestamp.replace(/-/g, ':')).toLocaleString()}`,
+        filePath: filePath,
+        date: stats.mtime.toISOString().split('T')[0],
+        time: timestamp,
+        configName: configName
+      });
+    }
+    
+    // Sort by date (newest first)
+    return logFiles.sort((a, b) => new Date(b.time) - new Date(a.time));
+    
+  } catch (error) {
+    console.error('Error getting log files:', error);
+    return [];
+  }
+}
+
+async function readLogFile(filePath) {
+  try {
+    const data = await fsPromises.readFile(filePath, 'utf8');
+    const lines = data.trim().split('\n');
+    
+    if (lines.length <= 1) {
+      return { success: false, error: 'Empty or invalid CSV file' };
+    }
+    
+    const headers = lines[0].split(',');
+    const configData = extractConfigFromCsv(data);
+    const processData = [];
+    
+    // Skip header line
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue;
+      
+      const values = lines[i].split(',');
+      if (values.length >= 3) {
+        const timeMatch = values[0].match(/T(\d{2}):(\d{2}):(\d{2})/);
+        let timeValue = i-1; // Default to index if time parsing fails
+        let force = parseFloat(values[2]) || 0;
+        let distance = parseFloat(values[1]) || 0;
+        
+        // Convert force from mN to N for better display
+        const forceN = force / 1000;
+        
+        processData.push({
+          time: timeValue,
+          distance: distance,
+          force: forceN,
+          temperature: parseFloat(values[3]) || 0
+        });
+      }
+    }
+    
+    return {
+      success: true,
+      data: processData,
+      configData: configData,
+      rawData: data
+    };
+    
+  } catch (error) {
+    console.error('Error reading log file:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function extractConfigFromCsv(csvData) {
+  const lines = csvData.split('\n');
+
+  const config = {
+    configName: 'Unknown',
+    pathlength: '--',
+    thresholdForce: '--',
+    temperature: '--',        // BathTemperature
+    retractionLength: '--',   // RetractionStrokelength
+    numberOfCurves: '--',
+    curveDistances: {}
+  };
+
+  // Read configuration from first data row
+  if (lines.length > 1) {
+    const firstDataRow = lines[1].split(',');
+
+    // Ensure row has enough columns
+    if (firstDataRow.length >= 11) {
+      config.configName       = firstDataRow[4] || 'Unknown';
+      config.pathlength       = firstDataRow[5] || '--';
+      config.thresholdForce   = firstDataRow[6] || '--';
+      config.temperature      = firstDataRow[7] || '--';   // ✅ BathTemperature
+      config.retractionLength = firstDataRow[8] || '--';   // ✅ RetractionStrokelength
+      config.numberOfCurves   = firstDataRow[9] || '--';
+
+      // Parse curve distances
+      try {
+        if (firstDataRow[10]) {
+          const curveDistancesStr = firstDataRow[10].replace(/\\"/g, '"');
+          config.curveDistances = JSON.parse(curveDistancesStr);
+        }
+      } catch (e) {
+        console.log('Could not parse curve distances:', e.message);
+      }
+    }
+  }
+
+  return config;
+}
+
+
+async function deleteLogFile(filePath) {
+  try {
+    await fsPromises.unlink(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting log file:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1140,6 +1289,21 @@ ipcMain.handle("csv-append", async (event, payload) => {
 
 ipcMain.handle("csv-stop", async () => {
   return await stopCSVLogging();
+});
+// ============================
+// CSV FILE MANAGEMENT IPC HANDLERS
+// ============================
+
+ipcMain.handle("get-log-files", async () => {
+  return await getLogFiles();
+});
+
+ipcMain.handle("read-log-file", async (event, filePath) => {
+  return await readLogFile(filePath);
+});
+
+ipcMain.handle("delete-log-file", async (event, filePath) => {
+  return await deleteLogFile(filePath);
 });
 
 

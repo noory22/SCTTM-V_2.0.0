@@ -158,38 +158,43 @@ const ProcessMode = () => {
   };
 
   // In the logSensorData function, update to:
-  const logSensorData = async (time, distance, force) => {
-    const timeNum = parseFloat(time);
-    const distNum = parseFloat(distance);
-    const forceNum = parseFloat(force);
-    
-    if (isNaN(timeNum) || isNaN(distNum) || isNaN(forceNum) || 
-        distance === '--' || force === '--') {
-      return;
-    }
-    
-    if (lastLoggedDataRef.current.time === timeNum && 
-        lastLoggedDataRef.current.distance === distNum && 
-        lastLoggedDataRef.current.force === forceNum) {
-      return;
-    }
-    
-    try {
-      console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`);
+    const logSensorData = async (time, distance, force) => {
+      const timeNum = parseFloat(time);
+      const distNum = parseFloat(distance);
+      const forceNum = parseFloat(force);
       
-      // Only send data, not config
-      await window.api.appendCSV({
-        distance: distNum,
-        force_mN: forceNum,
-        temperature: parseFloat(readData.temperature) || 0
-      });
+      if (isNaN(timeNum) || isNaN(distNum) || isNaN(forceNum) || 
+          distance === '--' || force === '--') {
+        return;
+      }
       
-      lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
-      console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN`);
-    } catch (error) {
-      console.error('❌ Error logging sensor data:', error);
-    }
-  };
+      if (lastLoggedDataRef.current.time === timeNum && 
+          lastLoggedDataRef.current.distance === distNum && 
+          lastLoggedDataRef.current.force === forceNum) {
+        return;
+      }
+      
+      try {
+        console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`);
+        
+        // Send data with config included
+        await window.api.appendCSV({
+          data: {
+            distance: distNum,
+            force_mN: forceNum,
+            temperature: parseFloat(readData.temperature) || 0
+          },
+          config: selectedConfig // Make sure config is included
+        });
+        
+        lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
+        console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN`);
+      } catch (error) {
+        console.error('❌ Error logging sensor data:', error);
+      }
+    };
+
+
 
   const handleHeaterOn = async () => {
     try {
