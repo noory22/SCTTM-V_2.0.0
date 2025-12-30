@@ -46,6 +46,7 @@ const ProcessMode = () => {
   const [isRetractionEnabled, setIsRetractionEnabled] = useState(false);
   const [isRetractionActive, setIsRetractionActive] = useState(false);
   const [isRetractionPaused, setIsRetractionPaused] = useState(false);
+  const [isRetractionCompleted, setIsRetractionCompleted] = useState(false);
 
   const [temperatureStatus, setTemperatureStatus] = useState({
     isHeatingRequired: false,
@@ -93,10 +94,24 @@ const ProcessMode = () => {
   useEffect(() => {
     const handleLLSStatusChange = (event) => {
       if (event.detail === 'true') {
-        console.log("🔄 COIL_LLS detected TRUE - Homing complete");
-        setIsHoming(false);
-        setSensorData(prev => ({ ...prev, status: 'READY' }));
-        console.log("✅ UI updated: Homing inactive, buttons enabled");
+        console.log("🔄 COIL_LLS detected TRUE");
+        
+        // Only update status to READY if we're coming from HOMING state
+        setSensorData(prev => {
+          console.log(`📊 Previous status: ${prev.status}, isHoming: ${isHoming}`);
+          
+          // If previous status was HOMING, change to READY
+          if (prev.status === 'HOMING') {
+            console.log("✅ Homing complete, changing status to READY");
+            setIsHoming(false);
+            return { ...prev, status: 'READY' };
+          }
+          
+          // If previous status was INSERTION, RETRACTION, or their paused states,
+          // don't change the status
+          console.log(`⚠️ COIL_LLS triggered but status remains: ${prev.status} (not from HOMING)`);
+          return prev; // Keep the same status
+        });
       }
     };
 
@@ -142,6 +157,7 @@ const ProcessMode = () => {
     }
   };
 
+  // In the logSensorData function, update to:
   const logSensorData = async (time, distance, force) => {
     const timeNum = parseFloat(time);
     const distNum = parseFloat(distance);
@@ -161,13 +177,11 @@ const ProcessMode = () => {
     try {
       console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`);
       
+      // Only send data, not config
       await window.api.appendCSV({
-        data: {
-          time: timeNum,
-          distance: distNum,
-          force: forceNum
-        },
-        config: selectedConfig
+        distance: distNum,
+        force_mN: forceNum,
+        temperature: parseFloat(readData.temperature) || 0
       });
       
       lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
@@ -230,24 +244,6 @@ const ProcessMode = () => {
     }
   };
 
-  // const handleRetraction = async () => {
-  //   try {
-  //     console.log('🔄 Starting retraction...');
-  //     const result = await window.api.retraction();
-      
-  //     if (result && result.success) {
-  //       setIsRetractionActive(true);
-  //       setIsRetractionPaused(false);
-  //       setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
-  //       console.log('✅ Retraction started');
-  //     } else {
-  //       console.error('Failed to start retraction:', result?.message);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to start retraction:', error);
-  //   }
-  // };
-
   useEffect(() => {
     let intervalId;
     
@@ -306,6 +302,32 @@ const ProcessMode = () => {
             }
           }
 
+          // Check if retraction is completed (distance = 0)
+          if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
+            const currentDistance = parseFloat(data.distance);
+            console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
+            
+            if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
+              console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
+              setIsRetractionCompleted(true);
+              setIsRetractionActive(false);
+              setIsRetractionEnabled(false);
+              setIsProcessRunning(false);
+              setSensorData(prev => ({ ...prev, status: 'READY' }));
+
+              // Clear chart data
+              setChartData([]);
+              
+              // Clear reached curves
+              setReachedCurves({});
+    
+              // Stop CSV logging
+              stopCsvLogging();
+              
+              console.log('🔄 System reset to READY state after retraction completion');
+            }
+          }
+
           if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
             const currentTime = (Date.now() - startTimeRef.current) / 1000;
             const timeFormatted = parseFloat(currentTime.toFixed(1));
@@ -349,7 +371,7 @@ const ProcessMode = () => {
         clearInterval(intervalId);
       }
     };
-  }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled]);
+  }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled, isRetractionActive, isRetractionPaused]);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -494,6 +516,7 @@ const ProcessMode = () => {
         if (result && result.success) {
           setIsProcessRunning(true);
           setIsPaused(false);
+          setIsRetractionCompleted(false);
           setIsHoming(false);
           setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
           startTimeRef.current = Date.now();
@@ -549,6 +572,8 @@ const ProcessMode = () => {
       if (result && result.success) {
         setIsRetractionActive(true);
         setIsRetractionPaused(false);
+        setIsRetractionCompleted(false);
+        setIsProcessRunning(true);
         setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
         console.log('✅ Retraction started');
       } else {
@@ -571,6 +596,7 @@ const ProcessMode = () => {
         setIsRetractionEnabled(false);
         setIsRetractionActive(false);
         setIsRetractionPaused(false);
+        setIsRetractionCompleted(false);
         setChartData([]);
         setReachedCurves({});
         setSensorData(prev => ({
@@ -608,12 +634,15 @@ const ProcessMode = () => {
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
     if (isRetractionEnabled && !isRetractionPaused) return true; // Disable when retraction is enabled but not paused
+    if (isRetractionPaused) return true; // Disable when retraction is paused
+    if (isRetractionCompleted) return false; // Enable when retraction is completed
     if (isProcessRunning && !isPaused && !isRetractionPaused) return true; // Disable when process is running
     return false;
   };
 
   const shouldDisablePauseButton = () => {
     if (shouldDisableButtons()) return true;
+    if (isRetractionCompleted) return true; // Disable when retraction is completed
     if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
     if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
     return false;
@@ -621,8 +650,15 @@ const ProcessMode = () => {
 
   const shouldDisableRetractionButton = () => {
     if (shouldDisableButtons()) return true;
+    if (isRetractionCompleted) return true; // Disable when retraction is completed
     if (!isRetractionEnabled) return true;
     if (isRetractionActive && !isRetractionPaused) return true;
+    return false;
+  };
+
+  const shouldDisableResetButton = () => {
+    if (!selectedConfig || isHoming) return true;
+    if (isRetractionCompleted) return true; // Disable when retraction is completed
     return false;
   };
 
@@ -632,7 +668,7 @@ const ProcessMode = () => {
 
   const getStartButtonText = () => {
     if (isPaused && sensorData.status === 'PAUSED') return 'RESUME';
-    if (isRetractionPaused && sensorData.status === 'RETRACTION PAUSED') return 'RESUME RETRACTION';
+    if (isRetractionCompleted) return 'START'; // Show START when retraction is completed
     return 'START';
   };
 
@@ -642,10 +678,12 @@ const ProcessMode = () => {
   };
 
   const shouldDisableBackButton = () => {
+    if (isRetractionCompleted) return false; // Enable back button when retraction is completed
     return sensorData.status !== 'READY';
   };
 
   const shouldDisablePowerButton = () => {
+    if (isRetractionCompleted) return false; // Enable power button when retraction is completed
     return sensorData.status !== 'READY';
   };
 
@@ -1495,9 +1533,9 @@ const ProcessMode = () => {
               
               <button
                 onClick={handleReset}
-                disabled={!selectedConfig || isHoming}
+                disabled={shouldDisableResetButton()}
                 className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  !selectedConfig || isHoming
+                  shouldDisableResetButton()
                     ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
                     : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
                 }`}
