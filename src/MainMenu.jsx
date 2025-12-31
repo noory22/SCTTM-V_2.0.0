@@ -298,9 +298,9 @@ const MainMenu = () => {
               {user.username} ({user.role === 'admin' ? 'Administrator' : 'Operator'})
             </span>
           </div>
-          <span className="text-xs text-gray-500">
+          {/* <span className="text-xs text-gray-500">
             {user.role === 'admin' ? 'Full Access' : 'Limited Access'}
-          </span>
+          </span> */}
         </div>
       </div>
       
@@ -387,14 +387,14 @@ const MainMenu = () => {
             <div className="w-full xl:flex-1 xl:max-w-3xl">
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">System Operations</h2>
-                <p className="text-gray-600">
+                {/* <p className="text-gray-600">
                   {user.role === 'admin' 
                     ? 'You have full access to all system operations' 
                     : 'You have access to operational features'}
-                </p>
+                </p> */}
                 
                 {/* Connection Status Banner */}
-                <div className={`mt-4 p-4 rounded-xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
+                {/* <div className={`mt-4 p-4 rounded-xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100' : 'bg-red-100'}`}>
@@ -421,10 +421,10 @@ const MainMenu = () => {
                       </button>
                     )}
                   </div>
-                </div>
+                </div> */}
                 
                 {/* Role info banner */}
-                <div className={`mt-4 p-3 rounded-lg ${user.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-200'}`}>
+                {/* <div className={`mt-4 p-3 rounded-lg ${user.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'bg-blue-50 border border-blue-200'}`}>
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${user.role === 'admin' ? 'bg-purple-500' : 'bg-blue-500'}`}></div>
                     <span className="text-sm font-medium">
@@ -433,7 +433,7 @@ const MainMenu = () => {
                         : 'Operator Role: Limited to Load Configuration, Manual Mode, and Process Logs'}
                     </span>
                   </div>
-                </div>
+                </div> */}
               </div>
               
               <div className="grid gap-5">
@@ -502,11 +502,11 @@ const MainMenu = () => {
                         </h3>
                         
                         {/* Admin-only badge */}
-                        {option.roles.length === 1 && option.roles[0] === 'admin' && (
+                        {/* {option.roles.length === 1 && option.roles[0] === 'admin' && (
                           <span className="px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full">
                             Admin Only
                           </span>
-                        )}
+                        )} */}
                       </div>
                       <p className="text-gray-600 leading-relaxed text-base group-hover:text-gray-700 transition-colors duration-300">
                         {option.description}
@@ -539,10 +539,10 @@ const MainMenu = () => {
                 {/* Product Header */}
                 <div className="mb-8">
                   <h1 className="text-8xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700 bg-clip-text text-transparent mb-4 tracking-tight leading-none">
-                    CTTM-100
+                    SCTTM
                   </h1>
                   <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6 leading-tight">
-                    Catheter Trackability Testing Machine
+                    Specialized Catheter Trackability Testing Machine
                   </h2>
                 </div>
                 
@@ -552,7 +552,7 @@ const MainMenu = () => {
                 </p>
                 
                 {/* Connection Status Card */}
-                <div className={`mb-6 p-5 rounded-2xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
+                {/* <div className={`mb-6 p-5 rounded-2xl border ${connectionInfo.borderColor} ${connectionInfo.bgColor}`}>
                   <div className="flex items-center gap-3 mb-3">
                     {connectionInfo.icon}
                     <h3 className="text-lg font-bold">PLC Connection Status</h3>
@@ -588,10 +588,10 @@ const MainMenu = () => {
                       </button>
                     )}
                   </div>
-                </div>
+                </div> */}
                 
                 {/* User Access Info */}
-                <div className={`p-5 rounded-2xl ${user.role === 'admin' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200'}`}>
+                {/* <div className={`p-5 rounded-2xl ${user.role === 'admin' ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200'}`}>
                   <h3 className="text-lg font-bold mb-2">Current User Access Level</h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -608,7 +608,7 @@ const MainMenu = () => {
                       }
                     </p>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -621,17 +621,17 @@ const MainMenu = () => {
           <div className="flex items-center gap-4 lg:gap-6">
             <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              {/* <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
               <span className={`text-xs ${connectionInfo.color}`}>
                 {connectionStatus === 'connected' ? 'PLC Connected' : 'PLC Disconnected'}
-              </span>
+              </span> */}
             </div>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
-            <span>Version 1.0.0</span>
-            <span className={`px-2 py-1 rounded ${user.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+            <span>Version 2.0.0</span>
+            {/* <span className={`px-2 py-1 rounded ${user.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
               {user.role === 'admin' ? 'Admin Mode' : 'Operator Mode'}
-            </span>
+            </span> */}
           </div>
         </div>
       </footer>

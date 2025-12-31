@@ -62,7 +62,7 @@ const HandleConfig = ({ mode = 'load' }) => {
         // Optional: Show success message before navigating
         setTimeout(() => {
           navigate('/process-mode');
-        }, 500);
+        }, 1500);
         
       } else {
         alert('Failed to send configuration to machine. Please check:\n1. Modbus connection\n2. PLC is powered on\n3. Register addresses are correct');

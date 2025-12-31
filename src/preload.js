@@ -20,7 +20,8 @@ contextBridge.exposeInMainWorld("api", {
   clamp: () => ipcRenderer.invoke("clamp"),
   insertion: () => ipcRenderer.invoke("insertion"),
   ret: () => ipcRenderer.invoke("ret"),
-  debugRegisters: () => ipcRenderer.invoke("debug-registers"),
+  disableManualMode: () => ipcRenderer.invoke('disable-manual-mode'),
+  // debugRegisters: () => ipcRenderer.invoke("debug-registers"),
   // ============= CSV LOGGING =============
   startCSV: (config) => ipcRenderer.invoke("csv-start", config),
   appendCSV: (payload) => ipcRenderer.invoke("csv-append", payload),

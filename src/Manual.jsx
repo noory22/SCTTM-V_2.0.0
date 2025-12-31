@@ -502,6 +502,22 @@ const Manual = () => {
       if (intervalId) clearInterval(intervalId);
     };
   }, [connectionStatus.connected]);
+  // Add this function in Manual.jsx, near other handler functions
+  const disableManualMode = async () => {
+    try {
+      // Only try to disable if connected
+      const status = await window.api.checkConnection();
+      if (status.connected) {
+        const result = await window.api.disableManualMode();
+        if (result.success) {
+          console.log('Manual mode disabled successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error disabling manual mode:', error);
+      // Don't show error to user for cleanup operations
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
@@ -510,11 +526,15 @@ const Manual = () => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button 
-              onClick={() => window.history.back()}
+              onClick={async () => {
+                await disableManualMode(); // Turn off manual mode first
+                window.history.back(); // Then go back
+              }}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
+
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
             
             {/* USB Connection Status Badge */}
@@ -533,10 +553,11 @@ const Manual = () => {
           </div>
           
           <button
-            onClick={() => {
+            onClick={async () => {
               const confirmed = window.confirm("Are you sure you want to exit?");
               if (confirmed) {
-                window.close();
+                await disableManualMode(); // Turn off manual mode first
+                window.close(); // Then close window
               }
             }}
             className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 

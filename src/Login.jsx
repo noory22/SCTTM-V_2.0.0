@@ -178,8 +178,8 @@ const Login = () => {
         </div>
 
         <div className="max-w-2xl text-gray-700">
-          <h1 className="text-7xl font-bold text-gray-800 mb-2 tracking-tight">CTTM-100</h1>
-          <h2 className="text-3xl font-semibold text-blue-600 mb-6 leading-tight">Catheter Trackability Testing Machine</h2>
+          <h1 className="text-7xl font-bold text-gray-800 mb-2 tracking-tight">SCTTM</h1>
+          <h2 className="text-3xl font-semibold text-blue-600 mb-6 leading-tight">Specialized Catheter Trackability Testing Machine</h2>
           <p className="text-lg leading-relaxed text-gray-600 max-w-lg">
             A reliable solution for precise catheter navigation and accurate performance 
             evaluation, designed for accuracy in every test.
@@ -193,7 +193,7 @@ const Login = () => {
             <p className="text-gray-400 text-sm">Copyright © Revive Medical Technologies Inc.</p>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
-            <span>Version 1.0.0</span>
+            <span>Version 2.0.0</span>
           </div>
         </div>
       </footer>

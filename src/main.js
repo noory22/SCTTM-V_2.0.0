@@ -456,10 +456,32 @@ const createWindow = () => {
   // Handle window close
   mainWindow.on('closed', () => {
     if (client.isOpen) {
-      console.log("Closing Modbus connection...");
-      client.close();
+      console.log("Disabling manual mode and closing Modbus connection...");
+      
+      try {
+        // Send coil off commands before closing
+        client.writeCoil(COIL_MANUAL, false);
+        client.writeCoil(COIL_RET, false);
+        client.writeCoil(COIL_INSERTION, false);
+        client.writeCoil(COIL_CLAMP, false);
+        
+        // Small delay to ensure commands are sent before closing
+        setTimeout(() => {
+          client.close();
+          isConnected = false;
+          console.log("Modbus connection closed.");
+        }, 50);
+        
+      } catch (err) {
+        console.error("Error during cleanup:", err.message);
+        // Still close the connection even if there's an error
+        client.close();
+        isConnected = false;
+      }
+    } else {
       isConnected = false;
     }
+    
     mainWindow = null;
   });
 };
@@ -495,6 +517,84 @@ async function safeReadRegisters(address, count) {
 // -------------------------
 // Read PLC Data Function - UPDATED
 // -------------------------
+// async function readPLCData() {
+//   if (!isConnected) {
+//     // Connection not established
+//     return {
+//       success: false,
+//       message: 'Not connected to PLC'
+//     };
+//   }
+  
+//   try {
+//     // Read distance (16-bit integer, already in mm)
+//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
+//     const distanceMM = distanceResult.data[0];
+    
+//     // Read force (32-bit float, already in mN)
+//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
+//     const forceRegisters = forceResult.data;
+//     const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
+    
+//     // Read temperature (16-bit integer, already in °C)
+//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
+//     const temperatureC = tempResult.data[0];
+
+//     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
+//     const manualDistance = manualDistanceResult.data[0];
+
+//      // 🔍 DEBUG LOG — ADD THIS SECTION
+//     console.log("=========================================");
+//     console.log(" PLC LIVE DATA RECEIVED");
+//     console.log("-----------------------------------------");
+//     console.log("RAW REGISTERS:");
+//     console.log("  Distance (70):", distanceMM);
+//     console.log("  Force (54,55):", forceRegisters);
+//     console.log("  Temperature (501):", temperatureC);
+//     console.log("-----------------------------------------");
+//     console.log("DECODED VALUES:");
+//     console.log(`  Distance:      ${distanceMM} mm`);
+//     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
+//     // console.log(`  Temperature:   ${temperatureC} °C`);
+//     console.log(`  Temperature Display: ${temperatureC.toFixed(1)} °C`);
+//     console.log(" Manual Distance:", manualDistance);
+//     console.log("=========================================");
+    
+//     return {
+//       success: true,
+//       // Distance data - already in mm
+//       distance: distanceMM,
+//       distanceDisplay: `${distanceMM} mm`,
+      
+//       // Force data - already in mN
+//       force_mN: forceMN,
+//       forceDisplay: `${forceMN.toFixed(2)} mN`,
+      
+//       // Temperature data - already in °C
+//       temperature: temperatureC,
+//       temperatureDisplay: `${temperatureC} °C`,
+
+//       manualDistance: manualDistance,   // NEW
+//       manualDistanceDisplay: `${manualDistance} mm`,  // NEW
+      
+//       // Raw data for debugging
+//       rawRegisters: {
+//         distance: distanceMM,
+//         force: forceRegisters,
+//         temperature: temperatureC,
+//         manualDistance: manualDistance
+//       }
+//     };
+    
+//   } catch (err) {
+//     console.error("❌ Error reading PLC data:", err.message);
+    
+//     return {
+//       success: false,
+//       message: `Failed to read PLC data: ${err.message}`
+//     };
+//   }
+// }
 async function readPLCData() {
   if (!isConnected) {
     // Connection not established
@@ -514,9 +614,11 @@ async function readPLCData() {
     const forceRegisters = forceResult.data;
     const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
     
-    // Read temperature (16-bit integer, already in °C)
+    // Read temperature (16-bit integer, multiply by 10 for precision)
     const tempResult = await safeReadRegisters(REG_TEMP, 1);
-    const temperatureC = tempResult.data[0];
+    const temperatureRaw = tempResult.data[0];
+    // Divide by 10 to get actual temperature in °C
+    const temperatureC = temperatureRaw / 10;
 
     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
     const manualDistance = manualDistanceResult.data[0];
@@ -528,13 +630,13 @@ async function readPLCData() {
     console.log("RAW REGISTERS:");
     console.log("  Distance (70):", distanceMM);
     console.log("  Force (54,55):", forceRegisters);
-    console.log("  Temperature (501):", temperatureC);
+    console.log("  Temperature (501):", temperatureRaw);
     console.log("-----------------------------------------");
     console.log("DECODED VALUES:");
     console.log(`  Distance:      ${distanceMM} mm`);
     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
-    // console.log(`  Temperature:   ${temperatureC} °C`);
-    console.log(`  Temperature Display: ${temperatureC.toFixed(1)} °C`);
+    console.log(`  Temperature (raw): ${temperatureRaw}`);
+    console.log(`  Temperature (actual): ${temperatureC.toFixed(1)} °C`);
     console.log(" Manual Distance:", manualDistance);
     console.log("=========================================");
     
@@ -548,9 +650,9 @@ async function readPLCData() {
       force_mN: forceMN,
       forceDisplay: `${forceMN.toFixed(2)} mN`,
       
-      // Temperature data - already in °C
+      // Temperature data - divide by 10 to get actual °C
       temperature: temperatureC,
-      temperatureDisplay: `${temperatureC} °C`,
+      temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
 
       manualDistance: manualDistance,   // NEW
       manualDistanceDisplay: `${manualDistance} mm`,  // NEW
@@ -559,7 +661,7 @@ async function readPLCData() {
       rawRegisters: {
         distance: distanceMM,
         force: forceRegisters,
-        temperature: temperatureC,
+        temperature: temperatureRaw,  // Keep raw value here
         manualDistance: manualDistance
       }
     };
@@ -572,38 +674,7 @@ async function readPLCData() {
       message: `Failed to read PLC data: ${err.message}`
     };
   }
-}// // Add this function to main.js
-// async function debugRegisters() {
-//   try {
-//     console.log("=== DEBUG REGISTER VALUES ===");
-    
-//     // Read all three registers
-//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
-//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
-//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
-    
-//     console.log("Distance register (70):", distanceResult.data);
-//     console.log("Force registers (54-55):", forceResult.data);
-//     console.log("Temperature register (501):", tempResult.data);
-    
-//     // Show the actual values
-//     const distance = distanceResult.data[0];
-//     const force = registersToFloat32LE(forceResult.data[0], forceResult.data[1]);
-//     const temp = tempResult.data[0];
-    
-//     console.log(`Distance: ${distance} mm`);
-//     console.log(`Force: ${force} mN (${force/1000} N)`);
-//     console.log(`Temperature: ${temp} °C`);
-    
-//   } catch (error) {
-//     console.error("Debug error:", error);
-//   }
-// }
-
-// // Call this from an IPC handler if needed
-// ipcMain.handle("debug-registers", async () => {
-//   return await debugRegisters();
-// });
+}
 // ============================
 // CONFIGURATION FILE FUNCTIONS
 // ============================
@@ -893,6 +964,23 @@ ipcMain.handle("ret", async () => {
       retState: retState ? "ON" : "OFF",
       message: `Manual Retraction turned ${retState ? "ON" : "OFF"}`
     };
+  });
+});
+
+// Add near other IPC handlers in main.js
+ipcMain.handle("disable-manual-mode", async () => {
+  return await safeExecute("DISABLE-MANUAL-MODE", async () => {
+    if (!isConnected) throw new Error('Modbus not connected');
+    
+    // Turn off COIL_MANUAL
+    await client.writeCoil(COIL_MANUAL, false);
+    
+    // Also turn off related coils
+    await client.writeCoil(COIL_RET, false);
+    await client.writeCoil(COIL_INSERTION, false);
+    await client.writeCoil(COIL_CLAMP, false);
+    
+    return { manualModeDisabled: true };
   });
 });
 
