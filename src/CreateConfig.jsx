@@ -104,7 +104,7 @@ const CreateConfig = () => {
       newErrors.temperature = 'Temperature is required';
     } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
       newErrors.temperature = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.temperature) < 37 || parseFloat(formData.temperature) > 45) {
+    } else if (parseFloat(formData.temperature) < 22 || parseFloat(formData.temperature) > 45) {
       newErrors.temperature = 'Temperature must be between 37°C and 45°C';
     }
     

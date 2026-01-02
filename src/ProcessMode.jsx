@@ -733,6 +733,7 @@ const ProcessMode = () => {
         }
       } else {
         result = await window.api.start();
+        result = await window.api.heating();
         
         if (result && result.success) {
           setIsProcessRunning(true);
