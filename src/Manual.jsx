@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Power, AlertCircle, X, Thermometer, Zap, ChevronLeft, ChevronRight, RotateCw, Camera, Flame, Usb, AlertTriangle, Move } from 'lucide-react';
+import { ArrowLeft, Power, Thermometer, Zap, RotateCw, Camera, Flame, Usb, Move } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -19,33 +19,23 @@ const Manual = () => {
   const [cameraError, setCameraError] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
   const [controls, setControls] = useState({
-    clamp: false,
     heater: false,
     homing: false
   });
-// ----------------------------------------------
-  // const [catheterDistance, setCatheterDistance] = useState(0);
+
   const [manualDistance, setManualDistance] = useState(0);
   const [graphData, setGraphData] = useState([]);
-  const [movementDirection, setMovementDirection] = useState("forward");
   const forwardData = graphData.filter(p => p.direction === "forward");
   const backwardData = graphData.filter(p => p.direction === "backward");
 
-// --------------------------------------------
-
-
   const [catheterPosition, setCatheterPosition] = useState(0);
-  const [motorState, setMotorState] = useState({
-    forward: false,
-    backward: false
-  });
   
   // Connection status state
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
     port: 'COM4',
     lastCheck: null,
-    dataSource: 'simulated' // 'simulated' or 'real'
+    dataSource: 'simulated'
   });
 
   // Check connection status on load and setup listener
@@ -144,137 +134,32 @@ const Manual = () => {
     };
   }, []);
 
-  // Handle control toggles using window.api
-  // const handleControlToggle = async (controlName) => {
-  //   try {
-  //     // Check connection first
-  //     const status = await window.api.checkConnection();
-  //     if (!status.connected) {
-  //       alert('PLC is not connected. Please connect to PLC first.');
-  //       setShowConnectionError(true);
-  //       return;
-  //     }
+  // Handle heater toggle using window.api
+  const handleHeaterToggle = async () => {
+    try {
+      // Check connection first
+      const status = await window.api.checkConnection();
+      if (!status.connected) {
+        alert('PLC is not connected. Please connect to PLC first.');
+        setShowConnectionError(true);
+        return;
+      }
 
-  //     if (controlName === 'clamp') {
-  //       const result = await window.api.clamp();
-  //       if (result.success) {
-  //         const newClampState = result.clampState === "ON";
-  //         setControls(prev => ({ ...prev, clamp: newClampState }));
-  //         console.log('Clamp toggled:', newClampState, 'Result:', result);
-  //       } else {
-  //         throw new Error(result.message || 'Clamp operation failed');
-  //       }
-  //     } else if (controlName === 'heater') {
-  //       const result = await window.api.heating();
-  //       if (result && result.success) {
-  //         setControls(prev => ({ ...prev, heater: result.heating }));
-  //         console.log('Heater toggled to:', result.heating, 'Result:', result);
-  //       }else {
-  //         throw new Error(result?.message || 'Heater operation failed');
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Control error:', error.message);
-  //     setShowConnectionError(true);
-  //     // alert(`Operation failed: ${error.message}`);
-  //   }
-  // };
-
-  // // Function to stop all motor movement
-  // const stopAllMotors = async () => {
-  //   try {
-  //     // If insertion is currently active, toggle it off
-  //     if (motorState.forward) {
-  //       const result = await window.api.insertion();
-  //       if (result.success && !result.insertionState) {
-  //         setMotorState({ forward: false, backward: false });
-  //       }
-  //     }
+      // Call the API to toggle heater
+      const result = await window.api.heating();
       
-  //     // If retraction is currently active, toggle it off
-  //     if (motorState.backward) {
-  //       const result = await window.api.ret();
-  //       if (result.success && !result.retState) {
-  //         setMotorState({ forward: false, backward: false });
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error('Stop motors error:', error.message);
-  //   }
-  // };
-
-  // const moveCatheter = async (direction) => {
-  //   try {
-  //     // Check connection first
-  //     const status = await window.api.checkConnection();
-  //     if (!status.connected) {
-  //       alert('PLC is not connected. Please connect to PLC first.');
-  //       setShowConnectionError(true);
-  //       return;
-  //     }
-
-  //     if (direction === "forward") {
-  //       // If forward is already active, toggle it off
-  //       if (motorState.forward) {
-  //         const result = await window.api.insertion();
-  //         if (result.success) {
-  //           const newInsertionState = result.insertionState === "ON";
-  //           setMotorState({ forward: newInsertionState, backward: false });
-  //           console.log('Insertion toggled:', newInsertionState, 'Result:', result);
-  //         } else {
-  //           throw new Error(result.message || 'Insertion operation failed');
-  //         }
-  //       } else {
-  //         // Stop any backward movement first
-  //         if (motorState.backward) {
-  //           await window.api.ret();
-  //         }
-          
-  //         // Turn on COIL_INSERTION
-  //         const result = await window.api.insertion();
-  //         if (result.success) {
-  //           const newInsertionState = result.insertionState === "ON";
-  //           setMotorState({ forward: newInsertionState, backward: false });
-  //           console.log('Insertion activated:', newInsertionState, 'Result:', result);
-  //         }else {
-  //           throw new Error(result.message || 'Insertion failed');
-  //         }
-  //       }
-  //     } else if (direction === "backward") {
-  //       // If backward is already active, toggle it off
-  //       if (motorState.backward) {
-  //         const result = await window.api.ret();
-  //         if (result.success) {
-  //           const newRetState = result.retState === "ON";
-  //           setMotorState({ forward: false, backward: newRetState });
-  //           console.log('Retraction toggled:', newRetState, 'Result:', result);
-  //         } 
-  //         else {
-  //           throw new Error(result.message || 'Retraction operation failed');
-  //         }
-  //       } else {
-  //         // Stop any forward movement first
-  //         if (motorState.forward) {
-  //           await window.api.insertion();
-  //         }
-          
-  //         // Turn on COIL_RET
-  //         const result = await window.api.ret();
-  //         if (result.success) {
-  //           const newRetState = result.retState === "ON";
-  //           setMotorState({ forward: false, backward: newRetState });
-  //           console.log('Retraction activated:', newRetState, 'Result:', result);
-  //         } else {
-  //           throw new Error(result.message || 'Retraction failed');
-  //         }
-  //       }
-  //     }
-  //   } catch (error) {
-  //     console.error("Motor movement error:", error.message);
-  //     setShowConnectionError(true);
-  //     // alert(`Movement failed: ${error.message}`);
-  //   }
-  // };
+      if (result && result.success) {
+        setControls(prev => ({ ...prev, heater: result.heating }));
+        console.log('Heater toggled to:', result.heating, 'Result:', result);
+      } else {
+        throw new Error(result?.message || 'Heater operation failed');
+      }
+    } catch (error) {
+      console.error('Heater control error:', error.message);
+      setShowConnectionError(true);
+      alert(`Heater operation failed: ${error.message}`);
+    }
+  };
 
   const resetCatheter = async () => {
     try {
@@ -286,20 +171,16 @@ const Manual = () => {
         return;
       }
 
-      // Stop any motor movement first
-      // await stopAllMotors();
+      // Clear graph data before starting homing
+      setGraphData([]);
       
       // Activate homing (COIL_HOME)
       setControls(prev => ({ ...prev, homing: true }));
       const result = await window.api.home();
-
-      // ✅ Clear graph data when homing completes
-      setGraphData([]);
       
       if (result.success) {
         console.log('Homing initiated:', result);
         setCatheterPosition(0);
-        setMotorState({ forward: false, backward: false });
       } else {
         throw new Error(result.message || 'Homing failed');
         setControls(prev => ({ ...prev, homing: false }));
@@ -308,7 +189,7 @@ const Manual = () => {
       console.error('Homing error:', error.message);
       setShowConnectionError(true);
       setControls(prev => ({ ...prev, homing: false }));
-      // alert(`Homing failed: ${error.message}`);
+      alert(`Homing failed: ${error.message}`);
     }
   };
 
@@ -362,6 +243,10 @@ const Manual = () => {
       if (event.detail === 'true') {
         console.log("🔄 Manual Mode: COIL_LLS detected TRUE - Homing complete");
         setControls(prev => ({ ...prev, homing: false }));
+
+        // ✅ Clear graph data when homing completes
+        setGraphData([]);
+
         console.log("✅ Manual mode UI updated: Homing inactive");
       }
     };
@@ -373,20 +258,12 @@ const Manual = () => {
     };
   }, []);
 
-  // Read PLC data periodically - FIXED VERSION
+  // Read PLC data periodically
   useEffect(() => {
     const readData = async () => {
       try {
         const data = await window.api.readData();
         if (data.success) {
-          // DEBUG: Log the data structure (optional)
-          // console.log('PLC Data:', {
-          //   force_mN: data.force_mN,
-          //   forceDisplay: data.forceDisplay,
-          //   distance: data.distance,
-          //   temperature: data.temperature
-          // });
-
           // Update force (already in mN)
           setForce(data.force_mN);
           
@@ -395,36 +272,11 @@ const Manual = () => {
           
           // Convert distance to position percentage (assuming 1000mm max)
           const maxDistance = 1000;
-          // --------------------------------------------------------
           const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
           setCatheterPosition(positionPercent);
           setManualDistance(data.manualDistance || 0);
 
-          // ---------------- GRAPH DATA UPDATE ----------------
-// ---------------- MANUAL GRAPH DATA UPDATE ----------------
-          // X-axis: manual distance (D550)
-          // Y-axis: force (mN)
-          // setGraphData(prev => {
-          //   const x = Number(data.manualDistance);
-          //   const y = Number(data.force_mN);
-
-          //   // Safety: ignore invalid values
-          //   if (isNaN(x) || isNaN(y)) return prev;
-
-          //   const newPoint = {
-          //     manualDistance: x,
-          //     force: y,
-          //     ts: Date.now()
-          //   };
-
-          //   const updated = [...prev, newPoint];
-
-          //   // Keep last 200 points only (prevents lag / blinking)
-          //   return updated.length > 200
-          //     ? updated.slice(updated.length - 200)
-          //     : updated;
-          // });
-
+          // Update graph data
           setGraphData(prev => {
             const x = Number(data.manualDistance);
             const y = Number(data.force_mN);
@@ -441,7 +293,7 @@ const Manual = () => {
             const newPoint = {
               manualDistance: x,
               force: y,
-              direction, // 👈 VERY IMPORTANT
+              direction,
             };
 
             const updated = [...prev, newPoint];
@@ -451,12 +303,6 @@ const Manual = () => {
               : updated;
           });
 
-
-
-
-
-
-        // ------------------------------------------------  
           // Update data source indicator
           if (data.isSimulated && connectionStatus.dataSource !== 'simulated') {
             setConnectionStatus(prev => ({ ...prev, dataSource: 'simulated' }));
@@ -505,7 +351,7 @@ const Manual = () => {
       if (intervalId) clearInterval(intervalId);
     };
   }, [connectionStatus.connected]);
-  // Add this function in Manual.jsx, near other handler functions
+
   const disableManualMode = async () => {
     try {
       // Only try to disable if connected
@@ -530,8 +376,8 @@ const Manual = () => {
           <div className="flex items-center space-x-4">
             <button 
               onClick={async () => {
-                await disableManualMode(); // Turn off manual mode first
-                window.history.back(); // Then go back
+                await disableManualMode();
+                window.history.back();
               }}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
@@ -559,8 +405,8 @@ const Manual = () => {
             onClick={async () => {
               const confirmed = window.confirm("Are you sure you want to exit?");
               if (confirmed) {
-                await disableManualMode(); // Turn off manual mode first
-                window.close(); // Then close window
+                await disableManualMode();
+                window.close();
               }
             }}
             className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white 
@@ -570,44 +416,6 @@ const Manual = () => {
             <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
           </button>
         </div>
-
-        {/* PLC Connection Error */}
-        {/* {showConnectionError && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-semibold">PLC CONNECTION ERROR</p>
-                  <p className="text-red-600 text-sm mt-1">
-                    Cannot communicate with PLC on {connectionStatus.port}. 
-                    {connectionStatus.connected ? ' Connection lost.' : ' Device not connected.'}
-                  </p>
-                  <div className="flex gap-2 mt-2">
-                    <button 
-                      onClick={handleReconnect}
-                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"
-                    >
-                      Reconnect
-                    </button>
-                    <button 
-                      onClick={() => setShowConnectionError(false)}
-                      className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm rounded-lg transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowConnectionError(false)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )} */}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -620,12 +428,6 @@ const Manual = () => {
                     <div className={`w-3 h-3 ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`}></div>
                     <span>Live Feed</span>
                   </h2>
-                  {/* <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="text-xs text-gray-300">
-                      PLC: {connectionStatus.connected ? 'Online' : 'Offline'} | Data: {connectionStatus.dataSource === 'real' ? 'Live' : 'Simulated'}
-                    </span>
-                  </div> */}
                 </div>
               </div>
               
@@ -739,7 +541,7 @@ const Manual = () => {
                         stroke="#3b82f6"  
                         strokeWidth={2.5}
                         dot={false}
-                        isAnimationActive={false}   // 🚨 stops blinking
+                        isAnimationActive={false}
                       />
 
                       {/* Backward movement (left / retraction) */}
@@ -747,7 +549,7 @@ const Manual = () => {
                         type="monotone"
                         data={backwardData}
                         dataKey="force"
-                        stroke="#ef4444"   // red
+                        stroke="#ef4444"
                         strokeWidth={2.5}
                         dot={false}
                         isAnimationActive={false}
@@ -756,7 +558,6 @@ const Manual = () => {
                   </ResponsiveContainer>
                 </div>
               </div>
-
 
               {/* Sensor Readings */}
               <div className="p-6 bg-slate-50 border-t border-slate-200">
@@ -828,10 +629,6 @@ const Manual = () => {
                       )}
                     </div>
                   </div>
-
-
-
-
                 </div>
               </div>
             </div>
@@ -839,72 +636,77 @@ const Manual = () => {
 
           {/* Control Panel */}
           <div className="space-y-6">
-            
-
-
-            {/* Heater and Homing */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Heater */}
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-                <h4 className="text-sm font-semibold text-slate-800 mb-3">Heater</h4>
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => handleControlToggle('heater')}
-                    disabled={!connectionStatus.connected || controls.homing}
-                    className={`relative w-16 h-16 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                      !connectionStatus.connected || controls.homing
-                        ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                        : controls.heater 
-                          ? 'bg-orange-500 border-orange-600 text-white' 
-                          : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                    }`}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Flame className="w-6 h-6" />
-                    </div>
-                    {controls.heater && connectionStatus.connected && (
-                      <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
-                    )}
-                  </button>
-                </div>
+            {/* Heater Control */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Heater Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to toggle ON/OFF</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={handleHeaterToggle}
+                  disabled={!connectionStatus.connected || controls.homing}
+                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
+                    !connectionStatus.connected || controls.homing
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.heater 
+                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600' 
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Flame className="w-8 h-8" />
+                  </div>
+                  {controls.heater && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-orange-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
               </div>
-
-              {/* Homing */}
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-                <h4 className="text-sm font-semibold text-slate-800 mb-3">Homing</h4>
-                <div className="flex justify-center">
-                  <button
-                    onClick={resetCatheter}
-                    disabled={!connectionStatus.connected || controls.homing}
-                    className={`relative w-16 h-16 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                      !connectionStatus.connected
-                        ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                        : controls.homing 
-                          ? 'bg-blue-500 border-blue-600 text-white' 
-                          : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                    }`}
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <RotateCw className={`w-6 h-6 ${controls.homing ? 'animate-spin' : ''}`} />
-                    </div>
-                    {controls.homing && connectionStatus.connected && (
-                      <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
-                    )}
-                  </button>
-                </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
+                  {controls.heater ? 'HEATING' : 'OFF'}
+                </span>
               </div>
+            </div>
+
+            {/* Homing Control */}
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Homing Control</h3>
+              <p className="text-sm text-slate-500 mb-4">Press to reset catheter position</p>
+              <div className="flex justify-center">
+                <button
+                  onClick={resetCatheter}
+                  disabled={!connectionStatus.connected}
+                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
+                    !connectionStatus.connected
+                      ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                      : controls.homing 
+                        ? 'bg-blue-500 border-blue-600 text-white' 
+                        : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+                  }`}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <RotateCw className={`w-8 h-8 ${controls.homing ? 'animate-spin' : ''}`} />
+                  </div>
+                  {controls.homing && connectionStatus.connected && (
+                    <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30"></div>
+                  )}
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
+                  {controls.homing ? 'ACTIVE' : 'INACTIVE'}
+                </span>
+              </div>
+              {controls.homing && (
+                <p className="text-xs text-blue-500 text-center mt-2">
+                  Homing in progress... This will clear the graph data
+                </p>
+              )}
             </div>
 
             {/* Status Panel */}
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">System Status</h3>
               <div className="space-y-3">
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Clamp:</span>
-                  <span className={`font-semibold ${controls.clamp ? 'text-green-600' : 'text-red-600'}`}>
-                    {controls.clamp ? 'ON' : 'OFF'}
-                  </span>
-                </div> */}
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Heater:</span>
                   <span className={`font-semibold ${controls.heater ? 'text-orange-600' : 'text-slate-600'}`}>
@@ -918,23 +720,60 @@ const Manual = () => {
                   </span>
                 </div>
                 {/* <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Movement:</span>
-                  <span className={`font-semibold ${
-                    motorState.forward ? 'text-blue-600' : 
-                    motorState.backward ? 'text-blue-600' : 
-                    'text-slate-600'
-                  }`}>
-                    {motorState.forward ? 'FORWARD' : motorState.backward ? 'BACKWARD' : 'IDLE'}
+                  <span className="text-slate-600">Catheter Position:</span>
+                  <span className="font-semibold text-blue-600">
+                    {catheterPosition.toFixed(1)}%
                   </span>
                 </div> */}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Manual Distance:</span>
+                  <span className="font-semibold text-emerald-600">
+                    {manualDistance} mm
+                  </span>
+                </div>
                 {/* <div className="flex items-center justify-between">
                   <span className="text-slate-600">Data Source:</span>
                   <span className={`font-semibold ${connectionStatus.dataSource === 'real' ? 'text-green-600' : 'text-gray-600'}`}>
                     {connectionStatus.dataSource === 'real' ? 'LIVE PLC' : 'SIMULATED'}
                   </span>
                 </div> */}
+                {/* <div className="flex items-center justify-between">
+                  <span className="text-slate-600">PLC Connection:</span>
+                  <span className={`font-semibold ${connectionStatus.connected ? 'text-green-600' : 'text-red-600'}`}>
+                    {connectionStatus.connected ? 'CONNECTED' : 'DISCONNECTED'}
+                  </span>
+                </div> */}
               </div>
             </div>
+
+            {/* Data Information */}
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Graph Information</h3>
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                  <span className="text-sm text-slate-600">Forward Movement</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                  <span className="text-sm text-slate-600">Backward Movement</span>
+                </div>
+                <div className="mt-4">
+                  <p className="text-sm text-slate-600">
+                    <span className="font-semibold">X-Axis:</span> Manual Distance (mm)
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    <span className="font-semibold">Y-Axis:</span> Force (mN)
+                  </p>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-slate-600">
+                    <span className="font-semibold">Note:</span> Graph shows real-time force vs distance data. 
+                    Homing will clear all graph data.
+                  </p>
+                </div>
+              </div>
+            </div> */}
           </div>
         </div>
       </div>
