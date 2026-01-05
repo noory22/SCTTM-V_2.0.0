@@ -319,6 +319,8 @@ async function getLogFiles() {
           const [_, year, month, day, hour, minute, second] = match;
           const date = new Date(year, month - 1, day, hour, minute, second);
           formattedDate = date.toLocaleString();
+          console.error("Date Formatted: ",formattedDate);
+          
         }
       } catch (e) {
         console.log('Date parsing error:', e.message);
@@ -337,6 +339,17 @@ async function getLogFiles() {
     // Sort by date (newest first)
     return logFiles.sort((a, b) => new Date(b.time) - new Date(a.time));
     
+    // return logFiles.sort((a, b) => {
+    //   const toISO = (t) =>
+    //     t.replace(
+    //       /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/,
+    //       "$1T$2:$3:$4.$5Z"
+    //     );
+
+    //   return new Date(toISO(b.time)) - new Date(toISO(a.time));
+    // });
+
+
   } catch (error) {
     console.error('Error getting log files:', error);
     return [];
