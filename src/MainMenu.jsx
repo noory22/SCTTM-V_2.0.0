@@ -171,6 +171,60 @@ const MainMenu = () => {
     };
   }, []);
 
+  // const handleOptionClick = async (option) => {
+  //   // Check if user has permission to access this option
+  //   if (!user || !option.roles.includes(user.role)) {
+  //     alert(`Access Denied: ${user?.role === 'operator' ? 'Operator' : 'Unknown user'} cannot access ${option.title}`);
+  //     return;
+  //   }
+    
+  //   setSelectedOption(option.id);
+  //   console.log(`Selected: ${option.title}`);
+    
+  //   if (option.id === 'create-config') {
+  //     navigate('/create-config');
+  //   }
+  //   else if (option.id === 'load-config') {
+  //     navigate('/handle-config/load');
+  //   }
+  //   else if (option.id === 'delete-config') {
+  //     navigate('/handle-config/delete');
+  //   }
+  //   // else if (option.id === 'manual-mode') {
+  //   //   try {
+  //   //     console.log('Activating manual mode...');
+  //   //     const res = await window.api.manual();
+
+  //   //     if (!res?.success) {
+  //   //       throw new Error("Manual mode failed");
+  //   //     }
+
+  //   //     navigate('/manual-mode');
+  //   //   } catch (error) {
+  //   //     console.error('Manual mode activation failed:', error);
+  //   //     alert("Failed to activate Manual Mode. Check PLC connection.");
+  //   //   }
+  //   // }
+  //   else if (option.id === 'manual-mode') {
+  //     console.log('Activating manual mode...');
+      
+  //     window.api.manual()
+  //       .then(res => {
+  //         if (!res?.success) {
+  //           throw new Error("Manual mode failed");
+  //         }
+  //         navigate('/manual-mode');
+  //       })
+  //       .catch(error => {
+  //         console.error('Manual mode activation failed:', error);
+  //         alert("Failed to activate Manual Mode. Check PLC connection.");
+  //       });
+  //   }
+  //       else if (option.id === 'process-logs') {
+  //         navigate('/process-logs');
+  //       }
+  //     };
+
   const handleOptionClick = async (option) => {
     // Check if user has permission to access this option
     if (!user || !option.roles.includes(user.role)) {
@@ -191,18 +245,23 @@ const MainMenu = () => {
       navigate('/handle-config/delete');
     }
     else if (option.id === 'manual-mode') {
+      // DIRECT NAVIGATION - Send command and navigate immediately
       try {
-        console.log('Activating manual mode...');
-        const res = await window.api.manual();
-
-        if (!res?.success) {
-          throw new Error("Manual mode failed");
-        }
-
+        console.log('Activating manual mode (non-blocking)...');
+        
+        // Send manual mode command without waiting
+        window.api.manual().catch(error => {
+          console.error('Manual mode command error (non-blocking):', error);
+          // Don't block navigation even if command fails
+        });
+        
+        // Navigate immediately
         navigate('/manual-mode');
+        
       } catch (error) {
-        console.error('Manual mode activation failed:', error);
-        alert("Failed to activate Manual Mode. Check PLC connection.");
+        console.error('Navigation error for manual mode:', error);
+        // Still navigate even if there's an error
+        navigate('/manual-mode');
       }
     }
     else if (option.id === 'process-logs') {

@@ -38,6 +38,9 @@ const Manual = () => {
     dataSource: 'simulated'
   });
 
+  // State to track COIL_LLS status - Initialize based on your system
+  const [coilLLSStatus, setCoilLLSStatus] = useState(false);
+
   // Check connection status on load and setup listener
   useEffect(() => {
     const checkConnection = async () => {
@@ -134,120 +137,17 @@ const Manual = () => {
     };
   }, []);
 
-  // Handle heater toggle using window.api
-  const handleHeaterToggle = async () => {
-    try {
-      // Check connection first
-      const status = await window.api.checkConnection();
-      if (!status.connected) {
-        alert('PLC is not connected. Please connect to PLC first.');
-        setShowConnectionError(true);
-        return;
-      }
-
-      // Call the API to toggle heater
-      const result = await window.api.heating();
-      
-      if (result && result.success) {
-        setControls(prev => ({ ...prev, heater: result.heating }));
-        console.log('Heater toggled to:', result.heating, 'Result:', result);
-      } else {
-        throw new Error(result?.message || 'Heater operation failed');
-      }
-    } catch (error) {
-      console.error('Heater control error:', error.message);
-      setShowConnectionError(true);
-      // alert(`Heater operation failed: ${error.message}`);
-    }
-  };
-
-  const resetCatheter = async () => {
-    try {
-      // Check connection first
-      const status = await window.api.checkConnection();
-      if (!status.connected) {
-        alert('PLC is not connected. Please connect to PLC first.');
-        setShowConnectionError(true);
-        return;
-      }
-
-      // Clear graph data before starting homing
-      setGraphData([]);
-      
-      // Activate homing (COIL_HOME)
-      setControls(prev => ({ ...prev, homing: true }));
-      const result = await window.api.home();
-      
-      if (result.success) {
-        console.log('Homing initiated:', result);
-        setCatheterPosition(0);
-      } else {
-        throw new Error(result.message || 'Homing failed');
-        setControls(prev => ({ ...prev, homing: false }));
-      }
-    } catch (error) {
-      console.error('Homing error:', error.message);
-      setShowConnectionError(true);
-      setControls(prev => ({ ...prev, homing: false }));
-      // alert(`Homing failed: ${error.message}`);
-    }
-  };
-
-  const handleReconnect = async () => {
-    try {
-      const result = await window.api.reconnect();
-      if (result.success && result.connected) {
-        setShowConnectionError(false);
-        setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
-        alert('Successfully reconnected to PLC!');
-      } else {
-        alert('Failed to reconnect. Please check PLC connection.');
-      }
-    } catch (error) {
-      console.error('Reconnect error:', error);
-      alert('Reconnection failed. Please check PLC connection.');
-    }
-  };
-
-  const retryCamera = async () => {
-    setCameraLoading(true);
-    setCameraError(false);
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'environment'
-        },
-        audio: false
-      });
-      
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      setCameraLoading(false);
-    } catch (error) {
-      console.error('Camera retry error:', error);
-      setCameraError(true);
-      setCameraLoading(false);
-    }
-  };
-  
-  // Listen for LLS status changes (homing completion)
+  // Listen for LLS status changes (for immediate updates)
   useEffect(() => {
     const handleLLSStatusChange = (event) => {
-      if (event.detail === 'true') {
-        console.log("🔄 Manual Mode: COIL_LLS detected TRUE - Homing complete");
+      const isLLSTrue = event.detail === true || event.detail === 'true';
+      console.log(`🔄 Event: COIL_LLS = ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
+      setCoilLLSStatus(isLLSTrue);
+      
+      if (isLLSTrue) {
         setControls(prev => ({ ...prev, homing: false }));
-
-        // ✅ Clear graph data when homing completes
         setGraphData([]);
-
-        console.log("✅ Manual mode UI updated: Homing inactive");
+        console.log("✅ Homing completed via event");
       }
     };
 
@@ -258,8 +158,129 @@ const Manual = () => {
     };
   }, []);
 
-  // Read PLC data periodically
+  // Handle heater toggle using window.api
+  const handleHeaterToggle = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) {
+          alert('PLC is not connected. Please connect to PLC first.');
+          setShowConnectionError(true);
+          return;
+        }
+
+        window.api.heating()
+          .then(result => {
+            if (result && result.success) {
+              setControls(prev => ({ ...prev, heater: result.heating }));
+              console.log('Heater toggled to:', result.heating, 'Result:', result);
+            } else {
+              throw new Error(result?.message || 'Heater operation failed');
+            }
+          })
+          .catch(error => {
+            console.error('Heater control error:', error.message);
+            setShowConnectionError(true);
+            alert(`Heater operation failed: ${error.message}`);
+          });
+      })
+      .catch(error => {
+        console.error('Connection check error:', error);
+        alert('PLC connection check failed. Please check connection.');
+      });
+  };
+
+  const resetCatheter = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (!status.connected) {
+          alert('PLC is not connected. Please connect to PLC first.');
+          setShowConnectionError(true);
+          return;
+        }
+
+        setGraphData([]);
+        setControls(prev => ({ ...prev, homing: true }));
+        setCatheterPosition(0);
+        
+        window.api.home()
+          .then(result => {
+            if (result.success) {
+              console.log('Homing initiated:', result);
+            } else {
+              throw new Error(result.message || 'Homing failed');
+              setControls(prev => ({ ...prev, homing: false }));
+            }
+          })
+          .catch(error => {
+            console.error('Homing error:', error.message);
+            setShowConnectionError(true);
+            setControls(prev => ({ ...prev, homing: false }));
+            alert(`Homing failed: ${error.message}`);
+          });
+      })
+      .catch(error => {
+        console.error('Connection check error:', error);
+        alert('PLC connection check failed. Please check connection.');
+      });
+  };
+
+  // Function to check COIL_LLS status from PLC
+  const checkCoilLLSStatus = async () => {
+    try {
+      // If your API has a specific method to check COIL_LLS, use it:
+      // const result = await window.api.checkCoilLLS();
+      
+      // OR if COIL_LLS is included in readData response:
+      const data = await window.api.readData();
+      
+      // Check if data contains COIL_LLS information
+      // Adjust this based on your actual API response structure
+      if (data && data.coilLLS !== undefined) {
+        const newStatus = Boolean(data.coilLLS);
+        if (newStatus !== coilLLSStatus) {
+          console.log(`🔍 PLC Polling: COIL_LLS changed from ${coilLLSStatus ? 'TRUE' : 'FALSE'} to ${newStatus ? 'TRUE' : 'FALSE'}`);
+          setCoilLLSStatus(newStatus);
+          
+          if (newStatus) {
+            setControls(prev => ({ ...prev, homing: false }));
+            setGraphData([]);
+          }
+        }
+        return newStatus;
+      }
+      
+      // Alternative: If you have a separate API call for COIL_LLS
+      try {
+        const llsResult = await window.api.getCoilLLSStatus();
+        if (llsResult && llsResult.coilLLS !== undefined) {
+          const newStatus = Boolean(llsResult.coilLLS);
+          if (newStatus !== coilLLSStatus) {
+            console.log(`🔍 COIL_LLS API: Status = ${newStatus ? 'TRUE' : 'FALSE'}`);
+            setCoilLLSStatus(newStatus);
+            
+            if (newStatus) {
+              setControls(prev => ({ ...prev, homing: false }));
+              setGraphData([]);
+            }
+          }
+          return newStatus;
+        }
+      } catch (llsError) {
+        console.log('No separate COIL_LLS API available');
+      }
+      
+      return coilLLSStatus; // Return current status if no update
+    } catch (error) {
+      console.error('Error checking COIL_LLS status:', error);
+      return coilLLSStatus; // Return current status on error
+    }
+  };
+
+  // Read PLC data periodically - WITH CONTINUOUS COIL_LLS CHECKING
   useEffect(() => {
+    let intervalId;
+    let llsCheckIntervalId;
+
     const readData = async () => {
       try {
         const data = await window.api.readData();
@@ -275,6 +296,22 @@ const Manual = () => {
           const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
           setCatheterPosition(positionPercent);
           setManualDistance(data.manualDistance || 0);
+
+          // CRITICAL: Check for COIL_LLS in the data response
+          // This is where continuous checking happens
+          if (data.coilLLS !== undefined) {
+            const newCoilLLSStatus = Boolean(data.coilLLS);
+            if (newCoilLLSStatus !== coilLLSStatus) {
+              console.log(`📊 Data Update: COIL_LLS = ${newCoilLLSStatus ? 'TRUE' : 'FALSE'}`);
+              setCoilLLSStatus(newCoilLLSStatus);
+              
+              // If COIL_LLS becomes TRUE, homing is complete
+              if (newCoilLLSStatus) {
+                setControls(prev => ({ ...prev, homing: false }));
+                setGraphData([]);
+              }
+            }
+          }
 
           // Update graph data
           setGraphData(prev => {
@@ -325,11 +362,22 @@ const Manual = () => {
       }
     };
 
-    // Read data every 500ms when connected, every 2s when not connected
-    let intervalId;
+    // Separate interval for checking COIL_LLS status (every 1 second as requested)
+    const setupLLSCheck = () => {
+      llsCheckIntervalId = setInterval(async () => {
+        if (connectionStatus.connected) {
+          await checkCoilLLSStatus();
+        }
+      }, 1000); // Check every 1 second
+    };
+
     if (connectionStatus.connected) {
+      // Read all data every 500ms
       readData();
       intervalId = setInterval(readData, 500);
+      
+      // Setup separate COIL_LLS check every 1 second
+      setupLLSCheck();
     } else {
       // Simulate data when not connected
       const simulateData = () => {
@@ -349,12 +397,56 @@ const Manual = () => {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (llsCheckIntervalId) clearInterval(llsCheckIntervalId);
     };
-  }, [connectionStatus.connected]);
+  }, [connectionStatus.connected]); // Re-run when connection status changes
+
+  const handleReconnect = async () => {
+    try {
+      const result = await window.api.reconnect();
+      if (result.success && result.connected) {
+        setShowConnectionError(false);
+        setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
+        alert('Successfully reconnected to PLC!');
+      } else {
+        alert('Failed to reconnect. Please check PLC connection.');
+      }
+    } catch (error) {
+      console.error('Reconnect error:', error);
+      alert('Reconnection failed. Please check PLC connection.');
+    }
+  };
+
+  const retryCamera = async () => {
+    setCameraLoading(true);
+    setCameraError(false);
+    
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment'
+        },
+        audio: false
+      });
+      
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      
+      setCameraLoading(false);
+    } catch (error) {
+      console.error('Camera retry error:', error);
+      setCameraError(true);
+      setCameraLoading(false);
+    }
+  };
 
   const disableManualMode = async () => {
     try {
-      // Only try to disable if connected
       const status = await window.api.checkConnection();
       if (status.connected) {
         const result = await window.api.disableManualMode();
@@ -364,9 +456,11 @@ const Manual = () => {
       }
     } catch (error) {
       console.error('Error disabling manual mode:', error);
-      // Don't show error to user for cleanup operations
     }
   };
+
+  // Determine if Homing button should be disabled
+  const isHomingButtonDisabled = !connectionStatus.connected || controls.homing || coilLLSStatus;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
@@ -375,10 +469,18 @@ const Manual = () => {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <button 
-              onClick={async () => {
-                await disableManualMode();
-                window.history.back();
-              }}
+              onClick={() => {
+                  window.api.checkConnection()
+                    .then(status => {
+                      if (status.connected) {
+                        window.api.disableManualMode()
+                          .catch(error => console.error('Disable error:', error));
+                      }
+                    })
+                    .catch(error => console.error('Connection check error:', error));
+                  
+                  window.history.back();
+                }}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-6 h-6 text-slate-600" />
@@ -386,7 +488,6 @@ const Manual = () => {
 
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
             
-            {/* USB Connection Status Badge */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -544,7 +645,6 @@ const Manual = () => {
                         isAnimationActive={false}
                       />
 
-                      {/* Backward movement (left / retraction) */}
                       <Line
                         type="monotone"
                         data={backwardData}
@@ -562,7 +662,6 @@ const Manual = () => {
               {/* Sensor Readings */}
               <div className="p-6 bg-slate-50 border-t border-slate-200">
                 <div className="grid grid-cols-2 gap-6">
-                  {/* Temperature */}
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-orange-100 rounded-xl">
                       <Thermometer className="w-6 h-6 text-orange-600" />
@@ -584,7 +683,6 @@ const Manual = () => {
                     </div>
                   </div>
 
-                  {/* Force in mN */}
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-blue-100 rounded-xl">
                       <Zap className="w-6 h-6 text-blue-600" />
@@ -611,7 +709,6 @@ const Manual = () => {
                     </div>
                   </div>
 
-                  {/* Manual Movement Distance */}
                   <div className="flex items-center space-x-4 mt-3">
                     <div className="p-3 bg-emerald-100 rounded-xl">
                       <Move className="w-6 h-6 text-emerald-600" />
@@ -674,9 +771,9 @@ const Manual = () => {
               <div className="flex justify-center">
                 <button
                   onClick={resetCatheter}
-                  disabled={!connectionStatus.connected}
+                  disabled={isHomingButtonDisabled}
                   className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                    !connectionStatus.connected
+                    isHomingButtonDisabled
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
                       : controls.homing 
                         ? 'bg-blue-500 border-blue-600 text-white' 
@@ -692,10 +789,38 @@ const Manual = () => {
                 </button>
               </div>
               <div className="mt-4 text-center">
-                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
-                  {controls.homing ? 'ACTIVE' : 'INACTIVE'}
+                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : coilLLSStatus ? 'text-green-600' : 'text-amber-600'}`}>
+                  {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
                 </span>
               </div>
+              
+              {/* COIL_LLS Monitor Status */}
+              <div className="mt-3 p-2 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${coilLLSStatus ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                  <span className="text-xs text-slate-600">
+                    COIL_LLS: <span className={`font-bold ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
+                      {coilLLSStatus ? 'TRUE' : 'FALSE'}
+                    </span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 text-center mt-1">
+                  Monitoring every 1 second
+                </p>
+              </div>
+              
+              {coilLLSStatus && !controls.homing && (
+                <p className="text-xs text-green-500 text-center mt-2">
+                  Catheter is at home position
+                </p>
+              )}
+              
+              {!coilLLSStatus && !controls.homing && (
+                <p className="text-xs text-amber-500 text-center mt-2">
+                  Catheter is away from home - Homing available
+                </p>
+              )}
+              
               {controls.homing && (
                 <p className="text-xs text-blue-500 text-center mt-2">
                   Homing in progress... This will clear the graph data
@@ -714,66 +839,37 @@ const Manual = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Homing:</span>
-                  <span className={`font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
-                    {controls.homing ? 'ACTIVE' : 'INACTIVE'}
+                  <span className="text-slate-600">Homing Status:</span>
+                  <span className={`font-semibold ${controls.homing ? 'text-blue-600' : coilLLSStatus ? 'text-green-600' : 'text-amber-600'}`}>
+                    {controls.homing ? 'ACTIVE' : coilLLSStatus ? 'AT HOME' : 'AWAY FROM HOME'}
                   </span>
                 </div>
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Catheter Position:</span>
-                  <span className="font-semibold text-blue-600">
-                    {catheterPosition.toFixed(1)}%
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">COIL_LLS:</span>
+                  <span className={`font-semibold ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
+                    {coilLLSStatus ? 'TRUE' : 'FALSE'}
                   </span>
-                </div> */}
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-600">Manual Distance:</span>
                   <span className="font-semibold text-emerald-600">
                     {manualDistance} mm
                   </span>
                 </div>
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Data Source:</span>
-                  <span className={`font-semibold ${connectionStatus.dataSource === 'real' ? 'text-green-600' : 'text-gray-600'}`}>
-                    {connectionStatus.dataSource === 'real' ? 'LIVE PLC' : 'SIMULATED'}
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Homing Button:</span>
+                  <span className={`font-semibold ${isHomingButtonDisabled ? 'text-gray-600' : 'text-green-600'}`}>
+                    {isHomingButtonDisabled ? 'DISABLED' : 'ENABLED'}
                   </span>
-                </div> */}
-                {/* <div className="flex items-center justify-between">
-                  <span className="text-slate-600">PLC Connection:</span>
-                  <span className={`font-semibold ${connectionStatus.connected ? 'text-green-600' : 'text-red-600'}`}>
-                    {connectionStatus.connected ? 'CONNECTED' : 'DISCONNECTED'}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">COIL_LLS Monitor:</span>
+                  <span className="font-semibold text-blue-600">
+                    ACTIVE
                   </span>
-                </div> */}
+                </div>
               </div>
             </div>
-
-            {/* Data Information */}
-            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Graph Information</h3>
-              <div className="space-y-3">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                  <span className="text-sm text-slate-600">Forward Movement</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
-                  <span className="text-sm text-slate-600">Backward Movement</span>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-slate-600">
-                    <span className="font-semibold">X-Axis:</span> Manual Distance (mm)
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    <span className="font-semibold">Y-Axis:</span> Force (mN)
-                  </p>
-                </div>
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs text-slate-600">
-                    <span className="font-semibold">Note:</span> Graph shows real-time force vs distance data. 
-                    Homing will clear all graph data.
-                  </p>
-                </div>
-              </div>
-            </div> */}
           </div>
         </div>
       </div>

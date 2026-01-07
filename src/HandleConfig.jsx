@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Power, AlertCircle, ChevronDown, Trash2, Play, FileText, X, Info } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
@@ -21,8 +22,7 @@ const HandleConfig = ({ mode = 'load' }) => {
   const loadAvailableConfigs = async () => {
     try {
       setLoadingConfigs(true);
-    //   const configs = await window.serialAPI.readConfigFile();
-    const configs = await window.api.readConfigFile();
+      const configs = await window.api.readConfigFile();
       setAvailableConfigs(configs);
     } catch (error) {
       console.error('Error loading configurations:', error);
@@ -42,36 +42,30 @@ const HandleConfig = ({ mode = 'load' }) => {
       return;
     }
     
-    setIsLoading(true);
-    
+    // DIRECT SEND - No loading state
     try {
-      // ADDED: Include retractionLength in the process mode data
-      const success = await window.api.sendProcessMode({
+      // Send data immediately without waiting for response
+      window.api.sendProcessMode({
         pathlength: selectedConfig.pathlength,
         thresholdForce: selectedConfig.thresholdForce,
         temperature: selectedConfig.temperature,
         retractionLength: selectedConfig.retractionLength
+      }).catch(error => {
+        // Log error but don't block UI
+        console.error('PLC send error (non-blocking):', error);
       });
       
-      if (success) {
-        console.log('✅ Configuration sent to PLC successfully');
-        
-        // Store selected config for process screen
-        localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-        
-        // Optional: Show success message before navigating
-        setTimeout(() => {
-          navigate('/process-mode');
-        }, 500);
-        
-      } else {
-        // alert('Failed to send configuration to machine. Please check:\n1. Modbus connection\n2. PLC is powered on\n3. Register addresses are correct');
-      }
+      // Store selected config for process screen
+      localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
+      
+      // Navigate immediately without waiting
+      navigate('/process-mode');
+      
     } catch (error) {
-      // console.error('Error sending process mode command:', error);
-      // alert(`Configuration transfer failed:\n${error.message}\n\nPlease check Modbus connection.`);
-    } finally {
-      setIsLoading(false);
+      // Still navigate even if there's an error
+      console.error('Configuration transfer error (non-blocking):', error);
+      localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
+      navigate('/process-mode');
     }
   };
 
@@ -84,8 +78,7 @@ const HandleConfig = ({ mode = 'load' }) => {
     setIsLoading(true);
     
     try {
-    //   const success = await window.serialAPI.deleteConfigFile(selectedConfig.configName);
-    const success = await window.api.deleteConfigFile(selectedConfig.configName);
+      const success = await window.api.deleteConfigFile(selectedConfig.configName);
       
       if (success) {
         // Close the delete confirmation modal
@@ -147,7 +140,8 @@ const HandleConfig = ({ mode = 'load' }) => {
         'Select a configuration from the dropdown to load its settings',
         'All configuration values will be populated automatically',
         'Click "Process Mode" to continue with the selected configuration',
-        'Ensure serial port connection is active before processing',
+        'Configuration is sent directly to PLC and navigation happens immediately',
+        'No waiting for PLC response - process continues immediately'
       ];
     } else {
       return [
@@ -197,27 +191,6 @@ const HandleConfig = ({ mode = 'load' }) => {
           </div>
         </div>
 
-        {/* Serial Port Error (only for Load mode) */}
-        {/* {showSerialError && mode === 'load' && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <div>
-                  <p className="text-red-800 font-semibold">ERROR: REQUIRED SERIAL PORT NOT FOUND</p>
-                  <p className="text-red-600 text-sm mt-1">Please ensure the device is connected and try again.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowSerialError(false)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )} */}
-
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Configuration Selector */}
@@ -257,7 +230,6 @@ const HandleConfig = ({ mode = 'load' }) => {
                         >
                           <div>
                             <p className="font-medium text-slate-800">{config.configName}</p>
-                            {/* ADDED: Display retractionLength in the dropdown info */}
                             <p className="text-sm text-slate-500 mt-1">
                               {config.pathlength}mm, {config.temperature}°C, {config.thresholdForce}mN
                               {config.retractionLength && `, ${config.retractionLength}mm (retraction)`}
@@ -297,7 +269,6 @@ const HandleConfig = ({ mode = 'load' }) => {
                     value={selectedConfig ? selectedConfig.configName : ''}
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
-                    // placeholder="Select a configuration to view details"
                   />
                 </div>
 
@@ -340,7 +311,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                   />
                 </div>
 
-                {/* ADDED: Retraction Stroke Length Field */}
+                {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold text-slate-700">
                     Retraction Stroke Length (mm)
@@ -350,7 +321,6 @@ const HandleConfig = ({ mode = 'load' }) => {
                     value={selectedConfig ? selectedConfig.retractionLength : ''}
                     readOnly
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
-                    // placeholder="Select a configuration to view retraction length"
                   />
                 </div>
 
@@ -358,20 +328,11 @@ const HandleConfig = ({ mode = 'load' }) => {
                 <div className="pt-6">
                   <button
                     onClick={mode === 'load' ? handleProcessMode : () => setShowDeleteConfirm(true)}
-                    disabled={!selectedConfig || isLoading}
+                    disabled={!selectedConfig}
                     className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
                   >
-                    {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        {getButtonIcon()}
-                        <span>{getButtonText()}</span>
-                      </>
-                    )}
+                    {getButtonIcon()}
+                    <span>{getButtonText()}</span>
                   </button>
                 </div>
               </div>
