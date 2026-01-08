@@ -135,6 +135,39 @@ async function manualConnectModbus() {
   }
 }
 
+// // Add this variable near the top with other state variables
+// let lastLLSState = false;
+
+// // Add this function to monitor COIL_LLS
+// async function checkLLSStatus() {
+//   try {
+//     if (!isConnected) return;
+    
+//     // Read COIL_LLS status
+//     const llsResult = await client.readCoils(COIL_LLS, 1);
+//     const currentLLSState = llsResult.data[0];
+    
+//     // If LLS changed to TRUE
+//     if (currentLLSState && !lastLLSState) {
+//       console.log("✅ COIL_LLS became TRUE - Homing should be complete");
+      
+//       // Send notification to UI that homing is complete
+//       if (mainWindow && !mainWindow.isDestroyed()) {
+//         mainWindow.webContents.send('lls-status', 'true');
+//       }
+//     }
+    
+//     // Update last state
+//     lastLLSState = currentLLSState;
+    
+//   } catch (err) {
+//     console.error("Error checking COIL_LLS:", err.message);
+//   }
+// }
+
+// // Start checking LLS periodically
+// setInterval(checkLLSStatus, 500);
+
 // Add this variable near the top with other state variables
 let lastLLSState = false;
 
@@ -147,13 +180,13 @@ async function checkLLSStatus() {
     const llsResult = await client.readCoils(COIL_LLS, 1);
     const currentLLSState = llsResult.data[0];
     
-    // If LLS changed to TRUE
-    if (currentLLSState && !lastLLSState) {
-      console.log("✅ COIL_LLS became TRUE - Homing should be complete");
+    // Send status on EVERY change (both true and false)
+    if (currentLLSState !== lastLLSState) {
+      console.log(`🔄 COIL_LLS changed from ${lastLLSState} to ${currentLLSState}`);
       
-      // Send notification to UI that homing is complete
+      // Send notification to UI with the current state
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('lls-status', 'true');
+        mainWindow.webContents.send('lls-status', currentLLSState.toString());
       }
     }
     
@@ -675,6 +708,87 @@ async function safeReadRegisters(address, count) {
 //     };
 //   }
 // }
+// async function readPLCData() {
+//   if (!isConnected) {
+//     // Connection not established
+//     return {
+//       success: false,
+//       message: 'Not connected to PLC'
+//     };
+//   }
+  
+//   try {
+//     // Read distance (16-bit integer, already in mm)
+//     const distanceResult = await safeReadRegisters(REG_DISTANCE, 1);
+//     const distanceMM = distanceResult.data[0];
+    
+//     // Read force (32-bit float, already in mN)
+//     const forceResult = await safeReadRegisters(REG_FORCE, 2);
+//     const forceRegisters = forceResult.data;
+//     const forceMN = registersToFloat32LE(forceRegisters[0], forceRegisters[1]);
+    
+//     // Read temperature (16-bit integer, multiply by 10 for precision)
+//     const tempResult = await safeReadRegisters(REG_TEMP, 1);
+//     const temperatureRaw = tempResult.data[0];
+//     // Divide by 10 to get actual temperature in °C
+//     const temperatureC = temperatureRaw / 10;
+
+//     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
+//     const manualDistance = manualDistanceResult.data[0];
+
+//      // 🔍 DEBUG LOG — ADD THIS SECTION
+//     console.log("=========================================");
+//     console.log(" PLC LIVE DATA RECEIVED");
+//     console.log("-----------------------------------------");
+//     console.log("RAW REGISTERS:");
+//     console.log("  Distance (70):", distanceMM);
+//     console.log("  Force (54,55):", forceRegisters);
+//     console.log("  Temperature (501):", temperatureRaw);
+//     console.log("-----------------------------------------");
+//     console.log("DECODED VALUES:");
+//     console.log(`  Distance:      ${distanceMM} mm`);
+//     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
+//     console.log(`  Temperature (raw): ${temperatureRaw}`);
+//     console.log(`  Temperature (actual): ${temperatureC.toFixed(1)} °C`);
+//     console.log(" Manual Distance:", manualDistance);
+//     console.log("=========================================");
+    
+//     return {
+//       success: true,
+//       // Distance data - already in mm
+//       distance: distanceMM,
+//       distanceDisplay: `${distanceMM} mm`,
+      
+//       // Force data - already in mN
+//       force_mN: forceMN,
+//       forceDisplay: `${forceMN.toFixed(2)} mN`,
+      
+//       // Temperature data - divide by 10 to get actual °C
+//       temperature: temperatureC,
+//       temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
+
+//       manualDistance: manualDistance,   // NEW
+//       manualDistanceDisplay: `${manualDistance} mm`,  // NEW
+      
+//       // Raw data for debugging
+//       rawRegisters: {
+//         distance: distanceMM,
+//         force: forceRegisters,
+//         temperature: temperatureRaw,  // Keep raw value here
+//         manualDistance: manualDistance
+//       }
+//     };
+    
+//   } catch (err) {
+//     console.error("❌ Error reading PLC data:", err.message);
+    
+//     return {
+//       success: false,
+//       message: `Failed to read PLC data: ${err.message}`
+//     };
+//   }
+// }
+
 async function readPLCData() {
   if (!isConnected) {
     // Connection not established
@@ -702,22 +816,26 @@ async function readPLCData() {
 
     const manualDistanceResult = await safeReadRegisters(REG_MANUAL_DISTANCE, 1);
     const manualDistance = manualDistanceResult.data[0];
+    
+    // ✅ NEW: Read COIL_LLS status
+    let coilLLS = false;
+    try {
+      const llsResult = await client.readCoils(COIL_LLS, 1);
+      coilLLS = Boolean(llsResult.data[0]);
+    } catch (llsError) {
+      console.error("Error reading COIL_LLS:", llsError.message);
+      coilLLS = false;
+    }
 
-     // 🔍 DEBUG LOG — ADD THIS SECTION
     console.log("=========================================");
     console.log(" PLC LIVE DATA RECEIVED");
-    console.log("-----------------------------------------");
-    console.log("RAW REGISTERS:");
-    console.log("  Distance (70):", distanceMM);
-    console.log("  Force (54,55):", forceRegisters);
-    console.log("  Temperature (501):", temperatureRaw);
     console.log("-----------------------------------------");
     console.log("DECODED VALUES:");
     console.log(`  Distance:      ${distanceMM} mm`);
     console.log(`  Force:         ${forceMN.toFixed(2)} mN`);
-    console.log(`  Temperature (raw): ${temperatureRaw}`);
-    console.log(`  Temperature (actual): ${temperatureC.toFixed(1)} °C`);
-    console.log(" Manual Distance:", manualDistance);
+    console.log(`  Temperature:   ${temperatureC.toFixed(1)} °C`);
+    console.log(`  Manual Distance: ${manualDistance} mm`);
+    console.log(`  COIL_LLS:      ${coilLLS ? 'TRUE' : 'FALSE'}`); // ✅ Added
     console.log("=========================================");
     
     return {
@@ -734,15 +852,19 @@ async function readPLCData() {
       temperature: temperatureC,
       temperatureDisplay: `${temperatureC.toFixed(1)} °C`,
 
-      manualDistance: manualDistance,   // NEW
-      manualDistanceDisplay: `${manualDistance} mm`,  // NEW
+      manualDistance: manualDistance,
+      manualDistanceDisplay: `${manualDistance} mm`,
+      
+      // ✅ NEW: Include COIL_LLS status
+      coilLLS: coilLLS,
       
       // Raw data for debugging
       rawRegisters: {
         distance: distanceMM,
         force: forceRegisters,
-        temperature: temperatureRaw,  // Keep raw value here
-        manualDistance: manualDistance
+        temperature: temperatureRaw,
+        manualDistance: manualDistance,
+        coilLLS: coilLLS  // ✅ Added
       }
     };
     

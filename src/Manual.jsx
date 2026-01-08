@@ -35,37 +35,38 @@ const Manual = () => {
     connected: false,
     port: 'COM4',
     lastCheck: null,
-    dataSource: 'simulated'
+    dataSource: 'real'
   });
 
-  // State to track COIL_LLS status - Initialize based on your system
+  // State to track COIL_LLS status
   const [coilLLSStatus, setCoilLLSStatus] = useState(false);
 
   // Check connection status on load and setup listener
   useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const status = await window.api.checkConnection();
-        setConnectionStatus({
-          connected: status.connected,
-          port: status.port,
-          lastCheck: status.timestamp,
-          dataSource: status.connected ? 'real' : 'simulated'
-        });
-        
-        if (!status.connected) {
+    const checkConnection = () => {
+      window.api.checkConnection()
+        .then(status => {
+          setConnectionStatus({
+            connected: status.connected,
+            port: status.port,
+            lastCheck: status.timestamp,
+            dataSource: status.connected ? 'real' : 'real'
+          });
+          
+          if (!status.connected) {
+            setShowConnectionError(true);
+          }
+        })
+        .catch(error => {
+          console.error('Error checking connection:', error);
+          setConnectionStatus({
+            connected: false,
+            port: 'COM4',
+            lastCheck: new Date().toISOString(),
+            dataSource: 'real'
+          });
           setShowConnectionError(true);
-        }
-      } catch (error) {
-        console.error('Error checking connection:', error);
-        setConnectionStatus({
-          connected: false,
-          port: 'COM4',
-          lastCheck: new Date().toISOString(),
-          dataSource: 'simulated'
         });
-        setShowConnectionError(true);
-      }
     };
 
     // Check connection initially
@@ -81,7 +82,7 @@ const Manual = () => {
       setConnectionStatus(prev => ({
         ...prev,
         connected: newConnected,
-        dataSource: newConnected ? 'real' : 'simulated'
+        dataSource: 'real'
       }));
       
       if (status === 'disconnected') {
@@ -94,20 +95,19 @@ const Manual = () => {
     window.addEventListener('modbus-status-change', handleModbusStatusChange);
 
     // Initialize camera feed
-    const initCamera = async () => {
-      try {
-        setCameraLoading(true);
-        setCameraError(false);
-        
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: 'environment'
-          },
-          audio: false
-        });
-        
+    const initCamera = () => {
+      setCameraLoading(true);
+      setCameraError(false);
+      
+      navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'environment'
+        },
+        audio: false
+      })
+      .then(stream => {
         streamRef.current = stream;
         
         if (videoRef.current) {
@@ -115,11 +115,12 @@ const Manual = () => {
         }
         
         setCameraLoading(false);
-      } catch (error) {
+      })
+      .catch(error => {
         console.error('Camera access error:', error);
         setCameraError(true);
         setCameraLoading(false);
-      }
+      });
     };
 
     initCamera();
@@ -137,24 +138,59 @@ const Manual = () => {
     };
   }, []);
 
-  // Listen for LLS status changes (for immediate updates)
+  // COIL_LLS monitoring via events from main process
   useEffect(() => {
-    const handleLLSStatusChange = (event) => {
-      const isLLSTrue = event.detail === true || event.detail === 'true';
-      console.log(`🔄 Event: COIL_LLS = ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
+    console.log("🔍 Setting up COIL_LLS monitoring...");
+    
+    // Event listener for real-time COIL_LLS updates from main process
+    const handleLLSStatusChange = (status) => {
+      // The event data comes as string 'true' or 'false' from main.js
+      const isLLSTrue = status === 'true' || status === true;
+      
+      console.log(`🔄 COIL_LLS Event Received: ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
+      
+      // Update COIL_LLS status state
       setCoilLLSStatus(isLLSTrue);
       
+      // If COIL_LLS becomes TRUE, homing is complete
       if (isLLSTrue) {
         setControls(prev => ({ ...prev, homing: false }));
+        // Clear graph data when homing completes
         setGraphData([]);
-        console.log("✅ Homing completed via event");
+        console.log("✅ Homing completed (via event)");
+      }
+      
+      // If COIL_LLS becomes FALSE, motor has moved away from home position
+      if (!isLLSTrue) {
+        console.log("🔄 Motor moved away from home - COIL_LLS is FALSE");
       }
     };
 
-    window.addEventListener('lls-status-change', handleLLSStatusChange);
+    // Listen for custom events from main process
+    const handleCustomEvent = (event, status) => {
+      console.log("📡 Received LLS status:", status);
+      handleLLSStatusChange(status);
+    };
+
+    // Setup the event listener
+    window.electron?.receive?.('lls-status', handleCustomEvent) || 
+    window.api?.onLlsStatus?.(handleCustomEvent);
+
+    // Fallback: Add event listener to window
+    const handleWindowEvent = (e) => {
+      if (e.detail !== undefined) {
+        handleLLSStatusChange(e.detail);
+      }
+    };
     
+    window.addEventListener('lls-status-change', handleWindowEvent);
+
+    console.log("✅ COIL_LLS monitoring setup complete");
+
+    // Cleanup
     return () => {
-      window.removeEventListener('lls-status-change', handleLLSStatusChange);
+      console.log("🧹 Cleaning up COIL_LLS monitoring");
+      window.removeEventListener('lls-status-change', handleWindowEvent);
     };
   }, []);
 
@@ -180,15 +216,15 @@ const Manual = () => {
           .catch(error => {
             console.error('Heater control error:', error.message);
             setShowConnectionError(true);
-            alert(`Heater operation failed: ${error.message}`);
+            // alert(`Heater operation failed: ${error.message}`);
           });
       })
       .catch(error => {
         console.error('Connection check error:', error);
-        alert('PLC connection check failed. Please check connection.');
+        // alert('PLC connection check failed. Please check connection.');
       });
   };
-
+  
   const resetCatheter = () => {
     window.api.checkConnection()
       .then(status => {
@@ -198,239 +234,66 @@ const Manual = () => {
           return;
         }
 
+        // Clear graph data immediately
         setGraphData([]);
+        
+        // Activate homing UI state immediately
         setControls(prev => ({ ...prev, homing: true }));
         setCatheterPosition(0);
         
+        // Send home command
         window.api.home()
           .then(result => {
             if (result.success) {
               console.log('Homing initiated:', result);
             } else {
-              throw new Error(result.message || 'Homing failed');
               setControls(prev => ({ ...prev, homing: false }));
+              throw new Error(result.message || 'Homing failed');
             }
           })
           .catch(error => {
             console.error('Homing error:', error.message);
             setShowConnectionError(true);
             setControls(prev => ({ ...prev, homing: false }));
-            alert(`Homing failed: ${error.message}`);
+            // alert(`Homing failed: ${error.message}`);
           });
       })
       .catch(error => {
         console.error('Connection check error:', error);
-        alert('PLC connection check failed. Please check connection.');
+        // alert('PLC connection check failed. Please check connection.');
       });
   };
 
-  // Function to check COIL_LLS status from PLC
-  const checkCoilLLSStatus = async () => {
-    try {
-      // If your API has a specific method to check COIL_LLS, use it:
-      // const result = await window.api.checkCoilLLS();
-      
-      // OR if COIL_LLS is included in readData response:
-      const data = await window.api.readData();
-      
-      // Check if data contains COIL_LLS information
-      // Adjust this based on your actual API response structure
-      if (data && data.coilLLS !== undefined) {
-        const newStatus = Boolean(data.coilLLS);
-        if (newStatus !== coilLLSStatus) {
-          console.log(`🔍 PLC Polling: COIL_LLS changed from ${coilLLSStatus ? 'TRUE' : 'FALSE'} to ${newStatus ? 'TRUE' : 'FALSE'}`);
-          setCoilLLSStatus(newStatus);
-          
-          if (newStatus) {
-            setControls(prev => ({ ...prev, homing: false }));
-            setGraphData([]);
-          }
+  const handleReconnect = () => {
+    window.api.reconnect()
+      .then(result => {
+        if (result.success && result.connected) {
+          setShowConnectionError(false);
+          setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
+          alert('Successfully reconnected to PLC!');
+        } else {
+          alert('Failed to reconnect. Please check PLC connection.');
         }
-        return newStatus;
-      }
-      
-      // Alternative: If you have a separate API call for COIL_LLS
-      try {
-        const llsResult = await window.api.getCoilLLSStatus();
-        if (llsResult && llsResult.coilLLS !== undefined) {
-          const newStatus = Boolean(llsResult.coilLLS);
-          if (newStatus !== coilLLSStatus) {
-            console.log(`🔍 COIL_LLS API: Status = ${newStatus ? 'TRUE' : 'FALSE'}`);
-            setCoilLLSStatus(newStatus);
-            
-            if (newStatus) {
-              setControls(prev => ({ ...prev, homing: false }));
-              setGraphData([]);
-            }
-          }
-          return newStatus;
-        }
-      } catch (llsError) {
-        console.log('No separate COIL_LLS API available');
-      }
-      
-      return coilLLSStatus; // Return current status if no update
-    } catch (error) {
-      console.error('Error checking COIL_LLS status:', error);
-      return coilLLSStatus; // Return current status on error
-    }
+      })
+      .catch(error => {
+        console.error('Reconnect error:', error);
+        alert('Reconnection failed. Please check PLC connection.');
+      });
   };
 
-  // Read PLC data periodically - WITH CONTINUOUS COIL_LLS CHECKING
-  useEffect(() => {
-    let intervalId;
-    let llsCheckIntervalId;
-
-    const readData = async () => {
-      try {
-        const data = await window.api.readData();
-        if (data.success) {
-          // Update force (already in mN)
-          setForce(data.force_mN);
-          
-          // Update temperature
-          setTemperature(data.temperature);
-          
-          // Convert distance to position percentage (assuming 1000mm max)
-          const maxDistance = 1000;
-          const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
-          setCatheterPosition(positionPercent);
-          setManualDistance(data.manualDistance || 0);
-
-          // CRITICAL: Check for COIL_LLS in the data response
-          // This is where continuous checking happens
-          if (data.coilLLS !== undefined) {
-            const newCoilLLSStatus = Boolean(data.coilLLS);
-            if (newCoilLLSStatus !== coilLLSStatus) {
-              console.log(`📊 Data Update: COIL_LLS = ${newCoilLLSStatus ? 'TRUE' : 'FALSE'}`);
-              setCoilLLSStatus(newCoilLLSStatus);
-              
-              // If COIL_LLS becomes TRUE, homing is complete
-              if (newCoilLLSStatus) {
-                setControls(prev => ({ ...prev, homing: false }));
-                setGraphData([]);
-              }
-            }
-          }
-
-          // Update graph data
-          setGraphData(prev => {
-            const x = Number(data.manualDistance);
-            const y = Number(data.force_mN);
-
-            if (isNaN(x) || isNaN(y)) return prev;
-
-            let direction = "forward";
-
-            if (prev.length > 0) {
-              const lastX = prev[prev.length - 1].manualDistance;
-              direction = x < lastX ? "backward" : "forward";
-            }
-
-            const newPoint = {
-              manualDistance: x,
-              force: y,
-              direction,
-            };
-
-            const updated = [...prev, newPoint];
-
-            return updated.length > 200
-              ? updated.slice(updated.length - 200)
-              : updated;
-          });
-
-          // Update data source indicator
-          if (data.isSimulated && connectionStatus.dataSource !== 'simulated') {
-            setConnectionStatus(prev => ({ ...prev, dataSource: 'simulated' }));
-          } else if (!data.isSimulated && connectionStatus.dataSource !== 'real') {
-            setConnectionStatus(prev => ({ ...prev, dataSource: 'real' }));
-          }
-        }
-      } catch (error) {
-        console.error('Error reading PLC data:', error);
-        // Fallback to simulated data
-        const simulatedDistance = Math.floor(Math.random() * 1000);
-        const simulatedForce = 1000 + (Math.random() * 5000);
-        const simulatedTemp = 22 + (Math.random() * 3);
-        
-        setForce(simulatedForce);
-        setTemperature(simulatedTemp);
-        const positionPercent = Math.min(100, (simulatedDistance / 1000) * 100);
-        setCatheterPosition(positionPercent);
-        setConnectionStatus(prev => ({ ...prev, dataSource: 'simulated' }));
-      }
-    };
-
-    // Separate interval for checking COIL_LLS status (every 1 second as requested)
-    const setupLLSCheck = () => {
-      llsCheckIntervalId = setInterval(async () => {
-        if (connectionStatus.connected) {
-          await checkCoilLLSStatus();
-        }
-      }, 1000); // Check every 1 second
-    };
-
-    if (connectionStatus.connected) {
-      // Read all data every 500ms
-      readData();
-      intervalId = setInterval(readData, 500);
-      
-      // Setup separate COIL_LLS check every 1 second
-      setupLLSCheck();
-    } else {
-      // Simulate data when not connected
-      const simulateData = () => {
-        const simulatedDistance = Math.floor(Math.random() * 1000);
-        const simulatedForce = 1000 + (Math.random() * 5000);
-        const simulatedTemp = 22 + (Math.random() * 3);
-        
-        setForce(simulatedForce);
-        setTemperature(simulatedTemp);
-        const positionPercent = Math.min(100, (simulatedDistance / 1000) * 100);
-        setCatheterPosition(positionPercent);
-      };
-      
-      simulateData();
-      intervalId = setInterval(simulateData, 2000);
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-      if (llsCheckIntervalId) clearInterval(llsCheckIntervalId);
-    };
-  }, [connectionStatus.connected]); // Re-run when connection status changes
-
-  const handleReconnect = async () => {
-    try {
-      const result = await window.api.reconnect();
-      if (result.success && result.connected) {
-        setShowConnectionError(false);
-        setConnectionStatus(prev => ({ ...prev, connected: true, dataSource: 'real' }));
-        alert('Successfully reconnected to PLC!');
-      } else {
-        alert('Failed to reconnect. Please check PLC connection.');
-      }
-    } catch (error) {
-      console.error('Reconnect error:', error);
-      alert('Reconnection failed. Please check PLC connection.');
-    }
-  };
-
-  const retryCamera = async () => {
+  const retryCamera = () => {
     setCameraLoading(true);
     setCameraError(false);
     
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'environment'
-        },
-        audio: false
-      });
-      
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: 'environment'
+      },
+      audio: false
+    })
+    .then(stream => {
       streamRef.current = stream;
       
       if (videoRef.current) {
@@ -438,25 +301,103 @@ const Manual = () => {
       }
       
       setCameraLoading(false);
-    } catch (error) {
+    })
+    .catch(error => {
       console.error('Camera retry error:', error);
       setCameraError(true);
       setCameraLoading(false);
-    }
+    });
   };
 
-  const disableManualMode = async () => {
-    try {
-      const status = await window.api.checkConnection();
-      if (status.connected) {
-        const result = await window.api.disableManualMode();
-        if (result.success) {
-          console.log('Manual mode disabled successfully');
-        }
-      }
-    } catch (error) {
-      console.error('Error disabling manual mode:', error);
+  // Read PLC data periodically - REAL-TIME DATA ONLY
+  useEffect(() => {
+    const readData = () => {
+      window.api.readData()
+        .then(data => {
+          if (data.success) {
+            // Update force (already in mN)
+            setForce(data.force_mN);
+            
+            // Update temperature
+            setTemperature(data.temperature);
+            
+            // Convert distance to position percentage (assuming 1000mm max)
+            const maxDistance = 1000;
+            const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
+            setCatheterPosition(positionPercent);
+            setManualDistance(data.manualDistance || 0);
+
+            // Update COIL_LLS status from PLC data
+            if (data.coilLLS !== undefined) {
+              const newCoilLLSStatus = Boolean(data.coilLLS);
+              setCoilLLSStatus(newCoilLLSStatus);
+              
+              // If COIL_LLS becomes TRUE, homing is complete
+              if (newCoilLLSStatus) {
+                setControls(prev => ({ ...prev, homing: false }));
+              }
+            }
+
+            // Update graph data
+            setGraphData(prev => {
+              const x = Number(data.manualDistance);
+              const y = Number(data.force_mN);
+
+              if (isNaN(x) || isNaN(y)) return prev;
+
+              let direction = "forward";
+
+              if (prev.length > 0) {
+                const lastX = prev[prev.length - 1].manualDistance;
+                direction = x < lastX ? "backward" : "forward";
+              }
+
+              const newPoint = {
+                manualDistance: x,
+                force: y,
+                direction,
+              };
+
+              const updated = [...prev, newPoint];
+
+              return updated.length > 200
+                ? updated.slice(updated.length - 200)
+                : updated;
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error reading PLC data:', error);
+          // NO SIMULATED DATA - Just show last known values
+        });
+    };
+
+    // Read data only when connected
+    let intervalId;
+    if (connectionStatus.connected) {
+      readData();
+      intervalId = setInterval(readData, 500);
     }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [connectionStatus.connected]);
+
+  const disableManualMode = () => {
+    window.api.checkConnection()
+      .then(status => {
+        if (status.connected) {
+          window.api.disableManualMode()
+            .then(result => {
+              if (result.success) {
+                console.log('Manual mode disabled successfully');
+              }
+            })
+            .catch(error => console.error('Disable error:', error));
+        }
+      })
+      .catch(error => console.error('Connection check error:', error));
   };
 
   // Determine if Homing button should be disabled
@@ -488,6 +429,7 @@ const Manual = () => {
 
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
             
+            {/* USB Connection Status Badge */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -497,16 +439,16 @@ const Manual = () => {
                 {connectionStatus.port}
               </span>
               <span className={`text-xs px-1.5 py-0.5 rounded ${connectionStatus.dataSource === 'real' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
-                {connectionStatus.dataSource === 'real' ? 'LIVE' : 'SIM'}
+                LIVE
               </span>
             </div>
           </div>
           
           <button
-            onClick={async () => {
+            onClick={() => {
               const confirmed = window.confirm("Are you sure you want to exit?");
               if (confirmed) {
-                await disableManualMode();
+                disableManualMode();
                 window.close();
               }
             }}
@@ -579,7 +521,7 @@ const Manual = () => {
                         <div className="flex items-center gap-2">
                           <span>Position: {catheterPosition.toFixed(1)}%</span>
                           <span className="text-xs opacity-75">
-                            ({connectionStatus.dataSource === 'real' ? 'LIVE' : 'SIM'})
+                            (LIVE)
                           </span>
                         </div>
                       </div>
@@ -645,6 +587,7 @@ const Manual = () => {
                         isAnimationActive={false}
                       />
 
+                      {/* Backward movement (left / retraction) */}
                       <Line
                         type="monotone"
                         data={backwardData}
@@ -662,6 +605,7 @@ const Manual = () => {
               {/* Sensor Readings */}
               <div className="p-6 bg-slate-50 border-t border-slate-200">
                 <div className="grid grid-cols-2 gap-6">
+                  {/* Temperature */}
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-orange-100 rounded-xl">
                       <Thermometer className="w-6 h-6 text-orange-600" />
@@ -677,12 +621,10 @@ const Manual = () => {
                         </div>
                         <span className="text-slate-800 font-bold text-lg">{temperature.toFixed(1)}°C</span>
                       </div>
-                      {connectionStatus.dataSource === 'simulated' && (
-                        <p className="text-xs text-orange-500 mt-1">Simulated Data</p>
-                      )}
                     </div>
                   </div>
 
+                  {/* Force in mN */}
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-blue-100 rounded-xl">
                       <Zap className="w-6 h-6 text-blue-600" />
@@ -699,16 +641,13 @@ const Manual = () => {
 
                         <span className="text-slate-800 font-bold text-lg">{force.toFixed(2)} mN</span>
                       </div>
-
-                      {connectionStatus.dataSource === 'simulated' && (
-                        <p className="text-xs text-blue-500 mt-1">Simulated Data</p>
-                      )}
                       <p className="text-xs text-gray-500 mt-1">
                         ≈ {(force / 1000).toFixed(4)} N
                       </p>
                     </div>
                   </div>
 
+                  {/* Manual Movement Distance */}
                   <div className="flex items-center space-x-4 mt-3">
                     <div className="p-3 bg-emerald-100 rounded-xl">
                       <Move className="w-6 h-6 text-emerald-600" />
@@ -720,10 +659,6 @@ const Manual = () => {
                       <span className="text-slate-800 font-bold text-lg">
                         {manualDistance} mm
                       </span>
-
-                      {connectionStatus.dataSource === 'simulated' && (
-                        <p className="text-xs text-emerald-500 mt-1">Simulated Data</p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -789,41 +724,27 @@ const Manual = () => {
                 </button>
               </div>
               <div className="mt-4 text-center">
-                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : coilLLSStatus ? 'text-green-600' : 'text-amber-600'}`}>
+                <span className={`text-sm font-semibold ${controls.homing ? 'text-blue-600' : 'text-slate-600'}`}>
                   {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
                 </span>
               </div>
               
-              {/* COIL_LLS Monitor Status */}
-              <div className="mt-3 p-2 bg-slate-50 rounded-lg">
-                <div className="flex items-center justify-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${coilLLSStatus ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                  <span className="text-xs text-slate-600">
-                    COIL_LLS: <span className={`font-bold ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
-                      {coilLLSStatus ? 'TRUE' : 'FALSE'}
-                    </span>
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 text-center mt-1">
-                  Monitoring every 1 second
-                </p>
-              </div>
-              
+              {/* Status Messages */}
               {coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-green-500 text-center mt-2">
-                  Catheter is at home position
+                  ✅ Catheter is at home position. Homing disabled.
                 </p>
               )}
-              
+
               {!coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-amber-500 text-center mt-2">
-                  Catheter is away from home - Homing available
+                  🔄 Catheter is away from home. Homing available.
                 </p>
               )}
-              
+
               {controls.homing && (
                 <p className="text-xs text-blue-500 text-center mt-2">
-                  Homing in progress... This will clear the graph data
+                  ⚙️ Homing in progress... Waiting for COIL_LLS = TRUE
                 </p>
               )}
             </div>
@@ -863,9 +784,9 @@ const Manual = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-600">COIL_LLS Monitor:</span>
+                  <span className="text-slate-600">Data Source:</span>
                   <span className="font-semibold text-blue-600">
-                    ACTIVE
+                    REAL-TIME PLC DATA
                   </span>
                 </div>
               </div>
