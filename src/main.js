@@ -1275,8 +1275,7 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
   }
 });
 
-// Send process mode configuration to PLC
-// Send process mode configuration to PLC (with float support)
+
 // Send process mode configuration to PLC
 // ipcMain.handle("send-process-mode", async (event, config) => {
 //   try {
@@ -1397,6 +1396,7 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
 //     return false;
 //   }
 // });
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 ipcMain.handle("send-process-mode", async (event, config) => {
   try {
     console.log('🔧 Process mode config received:', config);
@@ -1419,32 +1419,77 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       retractionLength: `${retractionLength} mm`
     });
     
-    // Validate values (keep this to prevent writing garbage data)
+    // Validate values
     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
       console.error('❌ Invalid configuration values');
       return false;
     }
     
+    const results = [];
+    
     try {
-      // Prepare values for writing
-      const thresholdForceValue = Math.round(thresholdForce);
-      const temperatureValue = Math.round(temperature * 10); // Store with 0.1°C precision
-      const retractionValue = Math.round(retractionLength);
-      
-      // Write all values to registers
+      // 1. Write Path Length
+      console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
       await client.writeRegister(6000, pathLength);
-      await client.writeRegister(150, thresholdForceValue);
-      await client.writeRegister(510, temperatureValue);
-      await client.writeRegister(122, retractionValue);
+      await delay(150);
+      console.log('✅ Path Length written to address 6000');
+      results.push({ register: '6000 (D0)', value: pathLength, success: true });
       
-      console.log('✅ All configuration values successfully written to PLC');
-      console.log('📋 Written values:', {
-        'Address 6000 (Path Length)': pathLength,
-        'Address 150 (Threshold Force)': thresholdForceValue,
-        'Address 510 (Temperature)': temperatureValue,
-        'Address 122 (Retraction)': retractionValue
+      // 2. Write Threshold Force
+      const thresholdForceValue = Math.round(thresholdForce);
+      console.log(`📝 Writing Threshold Force: ${thresholdForceValue} mN to R150`);
+      await client.writeRegister(150, thresholdForceValue);
+      await delay(150);
+      console.log('✅ Threshold Force written to R150');
+      results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
+      
+      // 3. Write Temperature
+      const temperatureValue = Math.round(temperature * 10); // 0.1°C
+      console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
+      await client.writeRegister(510, temperatureValue);
+      await delay(150);
+      console.log('✅ Temperature written to R510');
+      results.push({ register: '510 (R510)', value: temperatureValue, success: true });
+      
+      // 4. Write Retraction Length
+      const retractionValue = Math.round(retractionLength);
+      console.log(`📝 Writing Retraction Stroke Length: ${retractionValue} mm to R122`);
+      await client.writeRegister(122, retractionValue);
+      await delay(150);
+      console.log('✅ Retraction Stroke Length written to R122');
+      results.push({ register: '122 (R122)', value: retractionValue, success: true });
+      
+      console.log('✅ All configuration values written');
+      console.log('📋 Write results:', results);
+      
+      // ---- Verification ----
+      console.log('🔄 Verifying written values...');
+      // await delay(200);
+
+      const verify6000 = await client.readHoldingRegisters(6000, 1);
+      const verify150 = await client.readHoldingRegisters(150, 1);
+      const verify510 = await client.readHoldingRegisters(510, 1);
+      const verify122 = await client.readHoldingRegisters(122, 1);
+      
+      console.log('🔍 Verification reads:', {
+        '6000 (Path Length)': verify6000.data[0],
+        '150 (Threshold Force)': verify150.data[0],
+        '510 (Temperature)': verify510.data[0],
+        '122 (Retraction)': verify122.data[0]
       });
       
+      const verificationPassed = 
+        verify6000.data[0] === pathLength &&
+        verify150.data[0] === thresholdForceValue &&
+        verify510.data[0] === temperatureValue &&
+        verify122.data[0] === retractionValue;
+        
+      if (!verificationPassed) {
+        console.warn('⚠️ Verification failed');
+        return false;
+      }
+
+      console.log('✅ All values verified successfully!');
       return true;
       
     } catch (error) {
@@ -1458,171 +1503,6 @@ ipcMain.handle("send-process-mode", async (event, config) => {
   }
 });
 
-// ipcMain.handle("send-process-mode", async (event, config) => {
-//   try {
-//     console.log('🔧 Process mode config received:', config);
-    
-//     if (!isConnected || !client.isOpen) {
-//       console.error('❌ Cannot send process mode: Modbus not connected');
-//       return false;
-//     }
-    
-//     // Parse configuration values
-//     const pathLength = parseInt(config.pathlength);
-//     const thresholdForce = parseFloat(config.thresholdForce); // mN
-//     const temperature = parseFloat(config.temperature); // °C
-//     const retractionLength = parseFloat(config.retractionLength); // mm
-    
-//     console.log('📊 Parsed config values:', {
-//       pathLength: `${pathLength} mm`,
-//       thresholdForce: `${thresholdForce} mN`,
-//       temperature: `${temperature} °C`,
-//       retractionLength: `${retractionLength} mm`
-//     });
-    
-//     // Validate values
-//     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
-//       console.error('❌ Invalid configuration values');
-//       return false;
-//     }
-    
-//     // Prepare all write operations to run in parallel
-//     const writeOperations = [
-//       {
-//         name: 'Path Length',
-//         address: 6000,
-//         value: pathLength,
-//         description: `${pathLength} mm`
-//       },
-//       {
-//         name: 'Threshold Force',
-//         address: 150,
-//         value: Math.round(thresholdForce),
-//         description: `${thresholdForce} mN`
-//       },
-//       {
-//         name: 'Temperature',
-//         address: 510,
-//         value: Math.round(temperature * 10), // Store with 0.1°C precision
-//         description: `${temperature} °C`
-//       },
-//       {
-//         name: 'Retraction Stroke Length',
-//         address: 122,
-//         value: Math.round(retractionLength),
-//         description: `${retractionLength} mm`
-//       }
-//     ];
-    
-//     console.log('🚀 Starting parallel write operations...');
-    
-//     // Execute all writes in parallel
-//     const writePromises = writeOperations.map(async (operation) => {
-//       try {
-//         console.log(`📝 Writing ${operation.name}: ${operation.description} to address ${operation.address}`);
-//         await client.writeRegister(operation.address, operation.value);
-//         console.log(`✅ ${operation.name} written successfully`);
-//         return {
-//           name: operation.name,
-//           address: operation.address,
-//           value: operation.value,
-//           success: true,
-//           error: null
-//         };
-//       } catch (error) {
-//         console.error(`❌ Error writing ${operation.name} to address ${operation.address}:`, error.message);
-//         return {
-//           name: operation.name,
-//           address: operation.address,
-//           value: operation.value,
-//           success: false,
-//           error: error.message
-//         };
-//       }
-//     });
-    
-//     // Wait for all write operations to complete
-//     const results = await Promise.allSettled(writePromises);
-    
-//     // Process results
-//     const successfulWrites = [];
-//     const failedWrites = [];
-    
-//     results.forEach((result, index) => {
-//       if (result.status === 'fulfilled') {
-//         const operationResult = result.value;
-//         if (operationResult.success) {
-//           successfulWrites.push(operationResult);
-//         } else {
-//           failedWrites.push(operationResult);
-//         }
-//       } else {
-//         failedWrites.push({
-//           name: writeOperations[index].name,
-//           address: writeOperations[index].address,
-//           error: result.reason?.message || 'Unknown error'
-//         });
-//       }
-//     });
-    
-//     console.log('📋 Write operation summary:', {
-//       total: writeOperations.length,
-//       successful: successfulWrites.length,
-//       failed: failedWrites.length
-//     });
-    
-//     if (failedWrites.length > 0) {
-//       console.error('⚠️ Some writes failed:', failedWrites);
-//     }
-    
-//     // Optional: Parallel verification (if all writes succeeded)
-//     if (failedWrites.length === 0) {
-//       console.log('🔄 Starting parallel verification...');
-      
-//       const verifyPromises = writeOperations.map(async (operation) => {
-//         try {
-//           const readResult = await client.readHoldingRegisters(operation.address, 1);
-//           const readValue = readResult.data[0];
-//           const matches = readValue === operation.value;
-          
-//           console.log(`🔍 ${operation.name}: written=${operation.value}, read=${readValue}, match=${matches}`);
-          
-//           return {
-//             name: operation.name,
-//             address: operation.address,
-//             written: operation.value,
-//             read: readValue,
-//             match: matches
-//           };
-//         } catch (error) {
-//           console.error(`❌ Error verifying ${operation.name}:`, error.message);
-//           return {
-//             name: operation.name,
-//             address: operation.address,
-//             error: error.message
-//           };
-//         }
-//       });
-      
-//       const verifyResults = await Promise.allSettled(verifyPromises);
-//       const allVerified = verifyResults.every(result => 
-//         result.status === 'fulfilled' && result.value.match !== false
-//       );
-      
-//       if (allVerified) {
-//         console.log('✅ All values verified successfully!');
-//       } else {
-//         console.warn('⚠️ Verification shows some values may not match');
-//       }
-//     }
-    
-//     return failedWrites.length === 0;
-    
-//   } catch (error) {
-//     console.error('❌ Error sending process mode:', error);
-//     return false;
-//   }
-// });
 
 // ============================
 // CSV LOGGING IPC
