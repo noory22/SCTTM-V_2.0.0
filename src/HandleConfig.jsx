@@ -63,7 +63,8 @@ const HandleConfig = ({ mode = 'load' }) => {
 
     } catch (error) {
       console.error("PLC transfer failed:", error);
-      alert("PLC communication error.");
+      // alert("PLC communication error.");
+      
     }
   };
 

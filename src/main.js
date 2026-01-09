@@ -1274,128 +1274,6 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
     return false;
   }
 });
-
-
-// Send process mode configuration to PLC
-// ipcMain.handle("send-process-mode", async (event, config) => {
-//   try {
-//     console.log('🔧 Process mode config received:', config);
-    
-//     if (!isConnected || !client.isOpen) {
-//       console.error('❌ Cannot send process mode: Modbus not connected');
-//       return false;
-//     }
-    
-//     // Parse configuration values
-//     const pathLength = parseInt(config.pathlength);
-//     const thresholdForce = parseFloat(config.thresholdForce); // mN
-//     const temperature = parseFloat(config.temperature); // °C
-//     const retractionLength = parseFloat(config.retractionLength); // mm
-    
-//     console.log('📊 Parsed config values:', {
-//       pathLength: `${pathLength} mm`,
-//       thresholdForce: `${thresholdForce} mN`,
-//       temperature: `${temperature} °C`,
-//       retractionLength: `${retractionLength} mm`
-//     });
-    
-//     // Validate values
-//     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
-//       console.error('❌ Invalid configuration values');
-//       return false;
-//     }
-    
-//     let allSuccess = true;
-//     const results = [];
-    
-//     try {
-//       // 1. Write Path Length to address 6000 (D0)
-//       console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
-//       await client.writeRegister(6000, pathLength);
-//       console.log('✅ Path Length written to address 6000');
-//       results.push({ register: '6000 (D0)', value: pathLength, success: true });
-      
-//       // 2. Write Threshold Force to R150 (address 150)
-//       console.log(`📝 Writing Threshold Force: ${thresholdForce} mN to R150 (address 150)`);
-//       const thresholdForceValue = Math.round(thresholdForce);
-//       await client.writeRegister(150, thresholdForceValue);
-//       console.log('✅ Threshold Force written to R150');
-//       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
-      
-//       // 3. Write Temperature to R510 (address 510)
-//       console.log(`📝 Writing Temperature: ${temperature}°C to R510 (address 510)`);
-//       const temperatureValue = Math.round(temperature * 10); // Store with 0.1°C precision
-//       await client.writeRegister(510, temperatureValue);
-//       console.log('✅ Temperature written to R510');
-//       results.push({ register: '510 (R510)', value: temperatureValue, success: true });
-      
-//       // 4. Write Retraction Stroke Length to R122 (address 122)
-//       console.log(`📝 Writing Retraction Stroke Length: ${retractionLength} mm to R122 (address 122)`);
-//       const retractionValue = Math.round(retractionLength);
-//       await client.writeRegister(122, retractionValue);
-//       console.log('✅ Retraction Stroke Length written to R122');
-//       results.push({ register: '122 (R122)', value: retractionValue, success: true });
-      
-//       console.log('✅ All configuration values successfully written to PLC');
-//       console.log('📋 Write operation results:', results);
-      
-//       // Optional: Verify the writes by reading back
-//       console.log('🔄 Verifying written values...');
-//       try {
-//         const verify6000 = await client.readHoldingRegisters(6000, 1);
-//         const verify150 = await client.readHoldingRegisters(150, 1);
-//         const verify510 = await client.readHoldingRegisters(510, 1);
-//         const verify122 = await client.readHoldingRegisters(122, 1);
-        
-//         console.log('🔍 Verification reads:', {
-//           '6000 (Path Length)': verify6000.data[0],
-//           '150 (Threshold Force)': verify150.data[0],
-//           '510 (Temperature)': verify510.data[0],
-//           '122 (Retraction)': verify122.data[0]
-//         });
-        
-//         // Check if values match
-//         const verificationPassed = 
-//           verify6000.data[0] === pathLength &&
-//           verify150.data[0] === thresholdForceValue &&
-//           verify510.data[0] === temperatureValue &&
-//           verify122.data[0] === retractionValue;
-          
-//         if (verificationPassed) {
-//           console.log('✅ All values verified successfully!');
-//         } else {
-//           console.warn('⚠️ Some values may not have been written correctly');
-//         }
-        
-//       } catch (verifyError) {
-//         console.log('⚠️ Could not verify writes (reading failed):', verifyError.message);
-//       }
-      
-//       return true;
-      
-//     } catch (error) {
-//       console.error('❌ Error writing to PLC:', error.message);
-      
-//       // More detailed error information
-//       if (error.message.includes('6000')) {
-//         console.error('⚠️ Specific error writing to address 6000 (Path Length)');
-//         console.error('Check if address 6000 is a valid holding register in your PLC');
-//       } else if (error.message.includes('150')) {
-//         console.error('⚠️ Specific error writing to address 150 (Threshold Force)');
-//       } else if (error.message.includes('510')) {
-//         console.error('⚠️ Specific error writing to address 510 (Temperature)');
-//       } else if (error.message.includes('122')) {
-//         console.error('⚠️ Specific error writing to address 122 (Retraction)');
-//       }
-      
-//       return false;
-//     }
-    
-//   } catch (error) {
-//     console.error('❌ Error sending process mode:', error);
-//     return false;
-//   }
-// });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 ipcMain.handle("send-process-mode", async (event, config) => {
   try {
@@ -1462,34 +1340,6 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       console.log('✅ All configuration values written');
       console.log('📋 Write results:', results);
       
-      // ---- Verification ----
-      console.log('🔄 Verifying written values...');
-      // await delay(200);
-
-      const verify6000 = await client.readHoldingRegisters(6000, 1);
-      const verify150 = await client.readHoldingRegisters(150, 1);
-      const verify510 = await client.readHoldingRegisters(510, 1);
-      const verify122 = await client.readHoldingRegisters(122, 1);
-      
-      console.log('🔍 Verification reads:', {
-        '6000 (Path Length)': verify6000.data[0],
-        '150 (Threshold Force)': verify150.data[0],
-        '510 (Temperature)': verify510.data[0],
-        '122 (Retraction)': verify122.data[0]
-      });
-      
-      const verificationPassed = 
-        verify6000.data[0] === pathLength &&
-        verify150.data[0] === thresholdForceValue &&
-        verify510.data[0] === temperatureValue &&
-        verify122.data[0] === retractionValue;
-        
-      if (!verificationPassed) {
-        console.warn('⚠️ Verification failed');
-        return false;
-      }
-
-      console.log('✅ All values verified successfully!');
       return true;
       
     } catch (error) {
@@ -1502,6 +1352,114 @@ ipcMain.handle("send-process-mode", async (event, config) => {
     return false;
   }
 });
+
+
+// const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+// ipcMain.handle("send-process-mode", async (event, config) => {
+//   try {
+//     console.log('🔧 Process mode config received:', config);
+    
+//     if (!isConnected || !client.isOpen) {
+//       console.error('❌ Cannot send process mode: Modbus not connected');
+//       return false;
+//     }
+    
+//     // Parse configuration values
+//     const pathLength = parseInt(config.pathlength);
+//     const thresholdForce = parseFloat(config.thresholdForce); // mN
+//     const temperature = parseFloat(config.temperature); // °C
+//     const retractionLength = parseFloat(config.retractionLength); // mm
+    
+//     console.log('📊 Parsed config values:', {
+//       pathLength: `${pathLength} mm`,
+//       thresholdForce: `${thresholdForce} mN`,
+//       temperature: `${temperature} °C`,
+//       retractionLength: `${retractionLength} mm`
+//     });
+    
+//     // Validate values
+//     if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
+//       console.error('❌ Invalid configuration values');
+//       return false;
+//     }
+    
+//     const results = [];
+    
+//     try {
+//       // 1. Write Path Length
+//       console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
+//       await client.writeRegister(6000, pathLength);
+//       await delay(150);
+//       console.log('✅ Path Length written to address 6000');
+//       results.push({ register: '6000 (D0)', value: pathLength, success: true });
+      
+//       // 2. Write Threshold Force
+//       const thresholdForceValue = Math.round(thresholdForce);
+//       console.log(`📝 Writing Threshold Force: ${thresholdForceValue} mN to R150`);
+//       await client.writeRegister(150, thresholdForceValue);
+//       await delay(150);
+//       console.log('✅ Threshold Force written to R150');
+//       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
+      
+//       // 3. Write Temperature
+//       const temperatureValue = Math.round(temperature * 10); // 0.1°C
+//       console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
+//       await client.writeRegister(510, temperatureValue);
+//       await delay(150);
+//       console.log('✅ Temperature written to R510');
+//       results.push({ register: '510 (R510)', value: temperatureValue, success: true });
+      
+//       // 4. Write Retraction Length
+//       const retractionValue = Math.round(retractionLength);
+//       console.log(`📝 Writing Retraction Stroke Length: ${retractionValue} mm to R122`);
+//       await client.writeRegister(122, retractionValue);
+//       await delay(150);
+//       console.log('✅ Retraction Stroke Length written to R122');
+//       results.push({ register: '122 (R122)', value: retractionValue, success: true });
+      
+//       console.log('✅ All configuration values written');
+//       console.log('📋 Write results:', results);
+      
+//       // ---- Verification ----
+//       console.log('🔄 Verifying written values...');
+//       // await delay(200);
+
+//       const verify6000 = await client.readHoldingRegisters(6000, 1);
+//       const verify150 = await client.readHoldingRegisters(150, 1);
+//       const verify510 = await client.readHoldingRegisters(510, 1);
+//       const verify122 = await client.readHoldingRegisters(122, 1);
+      
+//       console.log('🔍 Verification reads:', {
+//         '6000 (Path Length)': verify6000.data[0],
+//         '150 (Threshold Force)': verify150.data[0],
+//         '510 (Temperature)': verify510.data[0],
+//         '122 (Retraction)': verify122.data[0]
+//       });
+      
+//       const verificationPassed = 
+//         verify6000.data[0] === pathLength &&
+//         verify150.data[0] === thresholdForceValue &&
+//         verify510.data[0] === temperatureValue &&
+//         verify122.data[0] === retractionValue;
+        
+//       if (!verificationPassed) {
+//         console.warn('⚠️ Verification failed');
+//         return false;
+//       }
+
+//       console.log('✅ All values verified successfully!');
+//       return true;
+      
+//     } catch (error) {
+//       console.error('❌ Error writing to PLC:', error.message);
+//       return false;
+//     }
+    
+//   } catch (error) {
+//     console.error('❌ Error sending process mode:', error);
+//     return false;
+//   }
+// });
 
 
 // ============================
