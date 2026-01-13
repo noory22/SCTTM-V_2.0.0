@@ -843,31 +843,58 @@ const ProcessMode = () => {
     }
   };
 
+  // const handlePause = async () => {
+  //   try {
+  //     console.log('⏸️ Pausing process...');
+  //     const result = await window.api.stop(); // Using stop API for pause
+      
+  //     if (result && result.success) {
+  //       setIsProcessRunning(false);
+  //       setIsPaused(true);
+        
+  //       // Update status based on current state
+  //       if (sensorData.status === 'INSERTION' || sensorData.status === 'INSERTION COMPLETED') {
+  //         setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
+  //       } else if (sensorData.status === 'RETRACTION') {
+  //         setIsRetractionPaused(true);
+  //         setSensorData(prev => ({ ...prev, status: 'RETRACTION PAUSED' }));
+  //       }
+        
+  //       console.log('Process paused');
+  //     } else {
+  //       console.error('Failed to pause process:', result?.message);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to pause process:', error);
+  //   }
+  // };
+  
   const handlePause = async () => {
     try {
       console.log('⏸️ Pausing process...');
-      const result = await window.api.stop(); // Using stop API for pause
-      
+      const result = await window.api.stop();
+
       if (result && result.success) {
         setIsProcessRunning(false);
         setIsPaused(true);
-        
-        // Update status based on current state
+
+        // Reset retraction state
+        setIsRetractionActive(false);
+        setIsRetractionPaused(false);
+
         if (sensorData.status === 'INSERTION' || sensorData.status === 'INSERTION COMPLETED') {
           setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
         } else if (sensorData.status === 'RETRACTION') {
-          setIsRetractionPaused(true);
           setSensorData(prev => ({ ...prev, status: 'RETRACTION PAUSED' }));
         }
-        
-        console.log('Process paused');
-      } else {
-        console.error('Failed to pause process:', result?.message);
+
+        console.log('Process paused & retraction stopped');
       }
     } catch (error) {
       console.error('Failed to pause process:', error);
     }
   };
+
 
   const handleRetraction = async () => {
     try {
@@ -946,23 +973,43 @@ const ProcessMode = () => {
     return false;
   };
 
+  // const shouldDisablePauseButton = () => {
+  //   if (shouldDisableButtons()) return true;
+  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
+  //   if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
+  //   if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
+  //   return false;
+  // };
   const shouldDisablePauseButton = () => {
     if (shouldDisableButtons()) return true;
-    if (isRetractionCompleted) return true; // Disable when retraction is completed
-    if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
-    if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
+    if (isRetractionCompleted) return true;
+
+    if (!isProcessRunning && !isPaused && !isRetractionActive && !isRetractionPaused) {
+      return true;
+    }
+
     return false;
   };
 
-  const shouldDisableRetractionButton = () => {
-    if (shouldDisableButtons()) return true;
-    if (isRetractionCompleted) return true; // Disable when retraction is completed
-    if (!isRetractionEnabled) return true;
-    if (isRetractionActive && !isRetractionPaused) return true;
-    return false;
-  };
+  // const shouldDisableRetractionButton = () => {
+  //   if (shouldDisableButtons()) return true;
+  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
+  //   if (!isRetractionEnabled) return true;
+  //   if (isRetractionActive && !isRetractionPaused) return true;
+  //   return false;
+  // };
 
   // UPDATED: Reset button logic based on COIL_LLS status
+  const shouldDisableRetractionButton = () => {
+    if (shouldDisableButtons()) return true;
+    if (isRetractionCompleted) return true;
+    if (!isRetractionEnabled) return true;
+
+    if (isRetractionActive && !isRetractionPaused) return true;
+
+    return false;
+  };
+  
   const shouldDisableResetButton = () => {
     // If COIL_LLS is TRUE, disable reset button
     if (coilLLSStatus) {

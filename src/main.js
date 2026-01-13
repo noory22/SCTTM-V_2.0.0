@@ -22,7 +22,7 @@ let csvFilePath = null;
 // -------------------------
 const PORT = "COM4";
 const BAUDRATE = 9600;
-const TIMEOUT = 1;
+const TIMEOUT = 0;
 
 const COIL_HOME  = 2001;
 const COIL_LLS = 1000;
@@ -35,7 +35,7 @@ const COIL_MANUAL = 2070;
 const COIL_INSERTION = 2008;
 const COIL_RET = 2009;
 const COIL_CLAMP = 2007;
-const REG_DISTANCE   = 6116;  // 1 register (16-bit integer) - UPDATED
+const REG_DISTANCE   = 70;  // 1 register (16-bit integer) - UPDATED
 const REG_FORCE      = 54;    // 2 registers (32-bit float) - UPDATED
 const REG_TEMP    = 501;// 
 const REG_MANUAL_DISTANCE = 6550;
@@ -997,7 +997,7 @@ async function safeExecute(command, action) {
     return { 
       success: true, 
       message: `${command} executed successfully`,
-      ...result
+      // ...result
     };
     
   } catch (err) {
@@ -1049,16 +1049,31 @@ ipcMain.handle("start", async () => {
   });
 });
 
-ipcMain.handle("stop", async () => {
-  return await safeExecute("STOP", async () => {
-    if (!isConnected) throw new Error('Modbus not connected');
+// ipcMain.handle("stop", async () => {
+//   return await safeExecute("STOP", async () => {
+//     if (!isConnected) throw new Error('Modbus not connected');
     
-    await client.writeCoil(COIL_START, false);
-    await client.writeCoil(COIL_STOP, true);
-    await client.writeCoil(COIL_RETRACTION, false);
+//     await client.writeCoil(COIL_START, false);
+//     await client.writeCoil(COIL_STOP, true);
+//     await client.writeCoil(COIL_RETRACTION, false);
 
     
-    return { stopPressed: true };
+//     return { stopPressed: true };
+//   });
+// });
+ipcMain.handle("stop", async () => {
+  return await safeExecute("STOP", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
+
+    coilState.retraction = false;
+    coilState.heating = false;
+    coilState.manualRet = false;
+
+    await client.writeCoil(COIL_RETRACTION, false);
+    await client.writeCoil(COIL_START, false);
+    await client.writeCoil(COIL_STOP, true);
+
+    return { success: true, retraction: false };
   });
 });
 
@@ -1084,16 +1099,34 @@ ipcMain.handle("heating", async () => {
   });
 });
 
+// ipcMain.handle("retraction", async () => {
+//   return await safeExecute("RETRACTION", async () => {
+//     if (!isConnected) throw new Error("Modbus not connected");
+
+//     coilState.retraction = !coilState.retraction;
+//     await client.writeCoil(COIL_RETRACTION, coilState.retraction);
+//     await client.writeCoil(COIL_STOP, false);
+//     await client.writeCoil(COIL_START, false);
+
+//     return { retraction: coilState.retraction };
+//   });
+// });
 ipcMain.handle("retraction", async () => {
   return await safeExecute("RETRACTION", async () => {
     if (!isConnected) throw new Error("Modbus not connected");
 
-    coilState.retraction = !coilState.retraction;
-    await client.writeCoil(COIL_RETRACTION, coilState.retraction);
+    // Do NOT toggle – only turn ON
+    if (coilState.retraction) {
+      return { success: true, retraction: true };
+    }
+
+    coilState.retraction = true;
+
+    await client.writeCoil(COIL_RETRACTION, true);
     await client.writeCoil(COIL_STOP, false);
     await client.writeCoil(COIL_START, false);
 
-    return { retraction: coilState.retraction };
+    return { success: true, retraction: true };
   });
 });
 
