@@ -29,11 +29,11 @@ const Manual = () => {
   const backwardData = graphData.filter(p => p.direction === "backward");
 
   const [catheterPosition, setCatheterPosition] = useState(0);
-  
+
   // Connection status state
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
-    port: 'COM4',
+    port: '--', // Default to placeholder instead of hardcoded COM4
     lastCheck: null,
     dataSource: 'real'
   });
@@ -48,11 +48,11 @@ const Manual = () => {
         .then(status => {
           setConnectionStatus({
             connected: status.connected,
-            port: status.port,
+            port: status.port || '--', // Use port from backend
             lastCheck: status.timestamp,
             dataSource: status.connected ? 'real' : 'real'
           });
-          
+
           if (!status.connected) {
             setShowConnectionError(true);
           }
@@ -61,7 +61,7 @@ const Manual = () => {
           console.error('Error checking connection:', error);
           setConnectionStatus({
             connected: false,
-            port: 'COM4',
+            port: '--', // No hardcoded fallback
             lastCheck: new Date().toISOString(),
             dataSource: 'real'
           });
@@ -84,7 +84,7 @@ const Manual = () => {
         connected: newConnected,
         dataSource: 'real'
       }));
-      
+
       if (status === 'disconnected') {
         setShowConnectionError(true);
       } else {
@@ -98,7 +98,7 @@ const Manual = () => {
     const initCamera = () => {
       setCameraLoading(true);
       setCameraError(false);
-      
+
       navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -107,20 +107,20 @@ const Manual = () => {
         },
         audio: false
       })
-      .then(stream => {
-        streamRef.current = stream;
-        
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-        
-        setCameraLoading(false);
-      })
-      .catch(error => {
-        console.error('Camera access error:', error);
-        setCameraError(true);
-        setCameraLoading(false);
-      });
+        .then(stream => {
+          streamRef.current = stream;
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+
+          setCameraLoading(false);
+        })
+        .catch(error => {
+          console.error('Camera access error:', error);
+          setCameraError(true);
+          setCameraLoading(false);
+        });
     };
 
     initCamera();
@@ -129,7 +129,7 @@ const Manual = () => {
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('modbus-status-change', handleModbusStatusChange);
-      
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
           track.stop();
@@ -141,17 +141,17 @@ const Manual = () => {
   // COIL_LLS monitoring via events from main process
   useEffect(() => {
     console.log("🔍 Setting up COIL_LLS monitoring...");
-    
+
     // Event listener for real-time COIL_LLS updates from main process
     const handleLLSStatusChange = (status) => {
       // The event data comes as string 'true' or 'false' from main.js
       const isLLSTrue = status === 'true' || status === true;
-      
+
       console.log(`🔄 COIL_LLS Event Received: ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
-      
+
       // Update COIL_LLS status state
       setCoilLLSStatus(isLLSTrue);
-      
+
       // If COIL_LLS becomes TRUE, homing is complete
       if (isLLSTrue) {
         setControls(prev => ({ ...prev, homing: false }));
@@ -159,7 +159,7 @@ const Manual = () => {
         setGraphData([]);
         console.log("✅ Homing completed (via event)");
       }
-      
+
       // If COIL_LLS becomes FALSE, motor has moved away from home position
       if (!isLLSTrue) {
         console.log("🔄 Motor moved away from home - COIL_LLS is FALSE");
@@ -173,8 +173,8 @@ const Manual = () => {
     };
 
     // Setup the event listener
-    window.electron?.receive?.('lls-status', handleCustomEvent) || 
-    window.api?.onLlsStatus?.(handleCustomEvent);
+    window.electron?.receive?.('lls-status', handleCustomEvent) ||
+      window.api?.onLlsStatus?.(handleCustomEvent);
 
     // Fallback: Add event listener to window
     const handleWindowEvent = (e) => {
@@ -182,7 +182,7 @@ const Manual = () => {
         handleLLSStatusChange(e.detail);
       }
     };
-    
+
     window.addEventListener('lls-status-change', handleWindowEvent);
 
     console.log("✅ COIL_LLS monitoring setup complete");
@@ -224,7 +224,7 @@ const Manual = () => {
         // alert('PLC connection check failed. Please check connection.');
       });
   };
-  
+
   const resetCatheter = () => {
     window.api.checkConnection()
       .then(status => {
@@ -236,11 +236,11 @@ const Manual = () => {
 
         // Clear graph data immediately
         setGraphData([]);
-        
+
         // Activate homing UI state immediately
         setControls(prev => ({ ...prev, homing: true }));
         setCatheterPosition(0);
-        
+
         // Send home command
         window.api.home()
           .then(result => {
@@ -284,7 +284,7 @@ const Manual = () => {
   const retryCamera = () => {
     setCameraLoading(true);
     setCameraError(false);
-    
+
     navigator.mediaDevices.getUserMedia({
       video: {
         width: { ideal: 1280 },
@@ -293,20 +293,20 @@ const Manual = () => {
       },
       audio: false
     })
-    .then(stream => {
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      setCameraLoading(false);
-    })
-    .catch(error => {
-      console.error('Camera retry error:', error);
-      setCameraError(true);
-      setCameraLoading(false);
-    });
+      .then(stream => {
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+
+        setCameraLoading(false);
+      })
+      .catch(error => {
+        console.error('Camera retry error:', error);
+        setCameraError(true);
+        setCameraLoading(false);
+      });
   };
 
   // Read PLC data periodically - REAL-TIME DATA ONLY
@@ -317,10 +317,10 @@ const Manual = () => {
           if (data.success) {
             // Update force (already in mN)
             setForce(data.force_mN);
-            
+
             // Update temperature
             setTemperature(data.temperature);
-            
+
             // Convert distance to position percentage (assuming 1000mm max)
             const maxDistance = 1000;
             const positionPercent = Math.min(100, (data.distance / maxDistance) * 100);
@@ -331,7 +331,7 @@ const Manual = () => {
             if (data.coilLLS !== undefined) {
               const newCoilLLSStatus = Boolean(data.coilLLS);
               setCoilLLSStatus(newCoilLLSStatus);
-              
+
               // If COIL_LLS becomes TRUE, homing is complete
               if (newCoilLLSStatus) {
                 setControls(prev => ({ ...prev, homing: false }));
@@ -409,26 +409,26 @@ const Manual = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               onClick={() => {
-                  window.api.checkConnection()
-                    .then(status => {
-                      if (status.connected) {
-                        window.api.disableManualMode()
-                          .catch(error => console.error('Disable error:', error));
-                      }
-                    })
-                    .catch(error => console.error('Connection check error:', error));
-                  
-                  window.history.back();
-                }}
+                window.api.checkConnection()
+                  .then(status => {
+                    if (status.connected) {
+                      window.api.disableManualMode()
+                        .catch(error => console.error('Disable error:', error));
+                    }
+                  })
+                  .catch(error => console.error('Connection check error:', error));
+
+                window.history.back();
+              }}
               className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
 
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
-            
+
             {/* USB Connection Status Badge */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
               <Usb className="w-4 h-4" />
@@ -443,7 +443,7 @@ const Manual = () => {
               </span>
             </div>
           </div>
-          
+
           <button
             onClick={() => {
               const confirmed = window.confirm("Are you sure you want to exit?");
@@ -473,7 +473,7 @@ const Manual = () => {
                   </h2>
                 </div>
               </div>
-              
+
               {/* Video Container */}
               <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
                 {cameraLoading ? (
@@ -487,7 +487,7 @@ const Manual = () => {
                     <div className="text-center">
                       <p className="text-slate-600 font-medium mb-2">Camera not available</p>
                       <p className="text-slate-500 text-sm mb-4">Please check camera permissions and connection</p>
-                      <button 
+                      <button
                         onClick={retryCamera}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
                       >
@@ -504,19 +504,19 @@ const Manual = () => {
                       muted
                       className="w-full h-full object-cover"
                     />
-                    
+
                     <div className="absolute inset-0">
                       <div className="absolute inset-0 opacity-20">
                         <svg className="w-full h-full">
                           <defs>
                             <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1"/>
+                              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1" />
                             </pattern>
                           </defs>
                           <rect width="100%" height="100%" fill="url(#grid)" />
                         </svg>
                       </div>
-                      
+
                       <div className="absolute top-4 left-4 bg-black bg-opacity-60 text-white px-3 py-1 rounded-lg text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <span>Position: {catheterPosition.toFixed(1)}%</span>
@@ -525,12 +525,12 @@ const Manual = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
                         <div className="bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg">
                           <div className="flex items-center space-x-2">
                             <div className="w-24 h-2 bg-slate-600 rounded-full">
-                              <div 
+                              <div
                                 className="h-full bg-blue-400 rounded-full transition-all duration-300"
                                 style={{ width: `${catheterPosition}%` }}
                               ></div>
@@ -547,7 +547,7 @@ const Manual = () => {
               {/* Manual Distance Graph */}
               <div className="bg-white border-t border-slate-200 p-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-2">
-                  Manual Distance vs Force 
+                  Manual Distance vs Force
                 </h3>
 
                 <div className="w-full h-56">
@@ -581,7 +581,7 @@ const Manual = () => {
                         type="monotone"
                         data={forwardData}
                         dataKey="force"
-                        stroke="#3b82f6"  
+                        stroke="#3b82f6"
                         strokeWidth={2.5}
                         dot={false}
                         isAnimationActive={false}
@@ -614,7 +614,7 @@ const Manual = () => {
                       <p className="text-slate-600 text-sm font-medium">Temperature</p>
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-2 bg-orange-200 rounded-full">
-                          <div 
+                          <div
                             className="h-full bg-orange-500 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(100, (temperature / 40) * 100)}%` }}
                           ></div>
@@ -633,7 +633,7 @@ const Manual = () => {
                       <p className="text-slate-600 text-sm font-medium">Force</p>
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-2 bg-blue-200 rounded-full">
-                          <div 
+                          <div
                             className="h-full bg-blue-500 rounded-full transition-all duration-300"
                             style={{ width: `${Math.min(100, (force / 2000) * 100)}%` }}
                           ></div>
@@ -676,13 +676,12 @@ const Manual = () => {
                 <button
                   onClick={handleHeaterToggle}
                   disabled={!connectionStatus.connected || controls.homing}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                    !connectionStatus.connected || controls.homing
+                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${!connectionStatus.connected || controls.homing
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.heater 
-                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600' 
+                      : controls.heater
+                        ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600'
                         : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                  }`}
+                    }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Flame className="w-8 h-8" />
@@ -707,13 +706,12 @@ const Manual = () => {
                 <button
                   onClick={resetCatheter}
                   disabled={isHomingButtonDisabled}
-                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                    isHomingButtonDisabled
+                  className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 shadow-lg hover:shadow-xl ${isHomingButtonDisabled
                       ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                      : controls.homing 
-                        ? 'bg-blue-500 border-blue-600 text-white' 
+                      : controls.homing
+                        ? 'bg-blue-500 border-blue-600 text-white'
                         : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
-                  }`}
+                    }`}
                 >
                   <div className="absolute inset-0 flex items-center justify-center">
                     <RotateCw className={`w-8 h-8 ${controls.homing ? 'animate-spin' : ''}`} />
@@ -728,7 +726,7 @@ const Manual = () => {
                   {controls.homing ? 'HOMING ACTIVE' : coilLLSStatus ? 'AT HOME' : 'READY'}
                 </span>
               </div>
-              
+
               {/* Status Messages */}
               {coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-green-500 text-center mt-2">

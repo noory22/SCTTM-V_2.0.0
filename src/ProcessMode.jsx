@@ -43,6 +43,7 @@ const ProcessMode = () => {
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
+  const pauseTimeRef = useRef(null);
   const [isRetractionEnabled, setIsRetractionEnabled] = useState(false);
   const [isRetractionActive, setIsRetractionActive] = useState(false);
   const [isRetractionPaused, setIsRetractionPaused] = useState(false);
@@ -85,30 +86,30 @@ const ProcessMode = () => {
   const isLgScreen = screenSize.width >= 1366 && screenSize.width < 1920;
   const isMdScreen = screenSize.width >= 1024 && screenSize.width < 1366;
   const isSmScreen = screenSize.width < 1024;
-  
+
   //-------------------------------------------------------------------------//
   // NEW: COIL_LLS Monitoring - Continuously monitor COIL_LLS status
   //-------------------------------------------------------------------------//
   useEffect(() => {
     console.log("🔍 Setting up COIL_LLS monitoring for Process Mode...");
-    
+
     // Event listener for real-time COIL_LLS updates from main process
     const handleLLSStatusChange = (event) => {
       // The event data comes as string 'true' or 'false' from main.js
       const isLLSTrue = event.detail === 'true' || event.detail === true;
-      
+
       console.log(`🔄 Process Mode - COIL_LLS Event Received: ${isLLSTrue ? 'TRUE' : 'FALSE'}`);
-      
+
       // Update COIL_LLS status state
       setCoilLLSStatus(isLLSTrue);
-      
+
       // If COIL_LLS becomes TRUE, update sensor status to READY (if not in other states)
       if (isLLSTrue && sensorData.status === 'HOMING') {
         console.log("✅ Homing complete - changing status to READY");
         setSensorData(prev => ({ ...prev, status: 'READY' }));
         setIsHoming(false);
       }
-      
+
       // If COIL_LLS becomes FALSE, motor has moved away from home position
       if (!isLLSTrue) {
         console.log("🔄 Motor moved away from home - COIL_LLS is FALSE");
@@ -117,7 +118,7 @@ const ProcessMode = () => {
 
     // Setup event listener for COIL_LLS changes
     window.addEventListener('lls-status-change', handleLLSStatusChange);
-    
+
     console.log("✅ Process Mode COIL_LLS monitoring setup complete");
 
     // Cleanup
@@ -126,182 +127,71 @@ const ProcessMode = () => {
       window.removeEventListener('lls-status-change', handleLLSStatusChange);
     };
   }, [sensorData.status]);
-  
-  // Also check COIL_LLS in PLC data when reading sensor data
-  // useEffect(() => {
-  //   let intervalId;
-    
-  //   const pollSensorData = () => {
-  //     window.api.readData()
-  //       .then(data => {
-  //         if (data && data.success) {
-  //           setReadData({
-  //             temperature: data.temperature || '--',
-  //             temperatureDisplay: data.temperatureDisplay || '-- °C',
-  //             force: data.force_mN || '--',
-  //             forceDisplay: data.forceDisplay || '-- mN',
-  //             force_mN: data.force_mN || '--',
-  //             force_mN_Display: data.forceDisplay || '-- mN',
-  //             distance: data.distance || '--',
-  //             distanceDisplay: data.distanceDisplay || '-- mm'
-  //           });
-            
-  //           setSensorData(prev => ({
-  //             ...prev,
-  //             temperature: data.temperatureDisplay || '--',
-  //             force: data.forceDisplay || '--',
-  //             distance: data.distanceDisplay || '--'
-  //           }));
-
-  //           // NEW: Update COIL_LLS status from PLC data if available
-  //           if (data.coilLLS !== undefined) {
-  //             const newCoilLLSStatus = Boolean(data.coilLLS);
-  //             setCoilLLSStatus(newCoilLLSStatus);
-              
-  //             // If COIL_LLS becomes TRUE and we were homing, update status
-  //             if (newCoilLLSStatus && sensorData.status === 'HOMING') {
-  //               console.log("✅ Homing complete (from PLC data) - changing status to READY");
-  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
-  //               setIsHoming(false);
-  //             }
-  //           }
-
-  //           // Handle curve and distance logic
-  //           if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
-  //               !isRetractionEnabled && isProcessRunning && !isPaused) {
-              
-  //             const currentDistance = parseFloat(data.distance);
-  //             const targetDistance = parseFloat(selectedConfig.pathlength);
-
-  //             const curves = selectedConfig?.curveDistances || {};
-  //             Object.entries(curves).forEach(([curveLabel, curveVal]) => {
-  //               const threshold = Number(curveVal);
-
-  //               if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
-  //                 console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
-  //                 setReachedCurves(prev => ({
-  //                   ...prev,
-  //                   [curveLabel]: true
-  //                 }));
-  //               }
-  //             });
-              
-  //             console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
-              
-  //             if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
-  //               if (Math.round(currentDistance) === Math.round(targetDistance)) {
-  //                 console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
-  //                 setIsRetractionEnabled(true);
-  //                 setSensorData(prev => ({ ...prev, status: 'INSERTION COMPLETED' }));
-  //               } else {
-  //                 console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
-  //               }
-  //             }
-  //           }
-
-  //           // Check retraction completion
-  //           if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
-  //             const currentDistance = parseFloat(data.distance);
-  //             console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
-              
-  //             if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
-  //               console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
-  //               setIsRetractionCompleted(true);
-  //               setIsRetractionActive(false);
-  //               setIsRetractionEnabled(false);
-  //               setIsProcessRunning(false);
-  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
-
-  //               // Clear chart data
-  //               setChartData([]);
-                
-  //               // Clear reached curves
-  //               setReachedCurves({});
-      
-  //               // Stop CSV logging
-  //               stopCsvLogging();
-                
-  //               console.log('🔄 System reset to READY state after retraction completion');
-  //             }
-  //           }
-
-  //           // Update chart data and logging
-  //           if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
-  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
-  //             const timeFormatted = parseFloat(currentTime.toFixed(1));
-              
-  //             setChartData(prev => {
-  //               const newDataPoint = {
-  //                 time: timeFormatted,
-  //                 distance: parseFloat(data.distance) || 0,
-  //                 force: parseFloat(data.force_mN) || 0
-  //               };
-                
-  //               const newData = [...prev, newDataPoint];
-  //               return newData;
-  //             });
-  //           }
-            
-  //           if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
-  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
-  //             logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
-  //           }
-  //         } else if (data && !data.success) {
-  //           setReadData(prev => ({
-  //             ...prev,
-  //             temperatureDisplay: '-- °C',
-  //             forceDisplay: '-- mN',
-  //             distanceDisplay: '-- mm'
-  //           }));
-  //         }
-  //       })
-  //       .catch(error => {
-  //         console.error('Error polling sensor data:', error);
-  //       });
-  //   };
-
-  //   if (isConnected) {
-  //     intervalId = setInterval(pollSensorData, 1500);
-  //     pollSensorData(); // Initial call
-  //   }
-
-  //   return () => {
-  //     if (intervalId) {
-  //       clearInterval(intervalId);
-  //     }
-  //   };
-  // }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled, isRetractionActive, isRetractionPaused]);
-
 
   useEffect(() => {
     let intervalId;
-    
+
     const pollSensorData = async () => {
       try {
         const data = await window.api.readData();
-        
+
         if (data && data.success) {
+          // Fix: Handle 0 properly (0 is falsy in JS)
+          const formatVal = (val, unit) => (val !== undefined && val !== null && val !== '--') ? `${val} ${unit}` : `-- ${unit}`;
+          const rawVal = (val) => (val !== undefined && val !== null) ? val : '--';
+
           setReadData({
-            temperature: data.temperature || '--',
-            temperatureDisplay: data.temperatureDisplay || '-- °C',
-            force: data.force_mN || '--',
-            forceDisplay: data.forceDisplay || '-- mN',
-            force_mN: data.force_mN || '--',
-            force_mN_Display: data.forceDisplay || '-- mN',
-            distance: data.distance || '--',
-            distanceDisplay: data.distanceDisplay || '-- mm'
+            temperature: rawVal(data.temperature),
+            temperatureDisplay: formatVal(data.temperature, '°C'),
+            force: rawVal(data.force_mN),
+            forceDisplay: formatVal(data.force_mN, 'mN'),
+            force_mN: rawVal(data.force_mN),
+            force_mN_Display: formatVal(data.force_mN, 'mN'),
+            distance: rawVal(data.distance),
+            distanceDisplay: formatVal(data.distance, 'mm')
           });
-          
+
           setSensorData(prev => ({
             ...prev,
-            temperature: data.temperatureDisplay || '--',
-            force: data.forceDisplay || '--',
-            distance: data.distanceDisplay || '--'
+            temperature: formatVal(data.temperature, '°C'),
+            force: formatVal(data.force_mN, 'mN'),
+            distance: formatVal(data.distance, 'mm')
           }));
 
-          if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
-              !isRetractionEnabled && isProcessRunning && !isPaused) {
-            
+          // ---------------------------------------------------------------------------
+          // NEW: Auto-Pause if Force Threshold Exceeded
+          // ---------------------------------------------------------------------------
+          if (selectedConfig && (isProcessRunning || isRetractionActive) && !isPaused && !isRetractionPaused && data.force_mN !== '--') {
+            const currentForce = parseFloat(data.force_mN);
+            const thresholdForce = parseFloat(selectedConfig.thresholdForce);
+
+            if (!isNaN(currentForce) && !isNaN(thresholdForce) && currentForce >= thresholdForce) {
+              console.warn(`⚠️ FORCE THRESHOLD EXCEEDED! Current=${currentForce}mN, Limit=${thresholdForce}mN. Auto-pausing...`);
+
+              // Execute Stop Command
+              window.api.stop().catch(err => console.error('Failed to auto-stop:', err));
+
+              // Update State to PAUSED
+              setIsProcessRunning(false);
+              setIsPaused(true);
+              pauseTimeRef.current = Date.now();
+
+              if (sensorData.status === 'RETRACTION' || isRetractionActive) {
+                setIsRetractionPaused(true);
+                setSensorData(prev => ({ ...prev, status: 'RETRACTION PAUSED' }));
+              } else {
+                setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
+              }
+            }
+          }
+          // ---------------------------------------------------------------------------
+          // if (isProcessRunning) {
+          //   console.log(`📈 Polling: Running=true, Dist=${data.distance}, Force=${data.force_mN}, Time=${((Date.now() - startTimeRef.current)/1000).toFixed(1)}`);
+          // }
+
+          if (selectedConfig && data.distance !== '--' && data.distance !== undefined &&
+            !isRetractionEnabled && isProcessRunning && !isPaused) {
+
             const currentDistance = parseFloat(data.distance);
             const targetDistance = parseFloat(selectedConfig.pathlength);
 
@@ -317,9 +207,9 @@ const ProcessMode = () => {
                 }));
               }
             });
-            
+
             console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
-            
+
             if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
               if (Math.round(currentDistance) === Math.round(targetDistance)) {
                 console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
@@ -335,7 +225,7 @@ const ProcessMode = () => {
           if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
             const currentDistance = parseFloat(data.distance);
             console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
-            
+
             if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
               console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
               setIsRetractionCompleted(true);
@@ -346,13 +236,13 @@ const ProcessMode = () => {
 
               // Clear chart data
               setChartData([]);
-              
+
               // Clear reached curves
               setReachedCurves({});
-    
+
               // Stop CSV logging
               stopCsvLogging();
-              
+
               console.log('🔄 System reset to READY state after retraction completion');
             }
           }
@@ -360,20 +250,20 @@ const ProcessMode = () => {
           if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
             const currentTime = (Date.now() - startTimeRef.current) / 1000;
             const timeFormatted = parseFloat(currentTime.toFixed(1));
-            
+
             setChartData(prev => {
               const newDataPoint = {
                 time: timeFormatted,
                 distance: parseFloat(data.distance) || 0,
                 force: parseFloat(data.force_mN) || 0
               };
-              
+
               const newData = [...prev, newDataPoint];
               return newData;
             });
           }
-          
-          if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
+
+          if ((isProcessRunning || isRetractionActive) && !isPaused && !isRetractionPaused && data.distance !== '--' && data.force_mN !== '--') {
             const currentTime = (Date.now() - startTimeRef.current) / 1000;
             logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
           }
@@ -391,7 +281,8 @@ const ProcessMode = () => {
     };
 
     if (isConnected) {
-      intervalId = setInterval(pollSensorData, 1500);
+      // Since readData is now cached in main process, we can poll fast without penalty
+      intervalId = setInterval(pollSensorData, 100);
       pollSensorData();
     }
 
@@ -408,13 +299,13 @@ const ProcessMode = () => {
     if (selectedConfig && readData.temperature !== '--') {
       const realTimeTemp = parseFloat(readData.temperature);
       const targetTemp = parseFloat(selectedConfig.temperature);
-      
+
       if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
         // Check if real-time temperature is LESS THAN user-defined temperature
         const isTempBelowTarget = realTimeTemp < (targetTemp - 0.5); // 0.5°C tolerance
-        
+
         console.log(`🌡️ Temperature Check: Real=${realTimeTemp}°C, Target=${targetTemp}°C, isBelowTarget=${isTempBelowTarget}`);
-        
+
         if (isTempBelowTarget && !temperatureStatus.isHeatingActive) {
           // Show heating dialog if temperature is below target
           setTemperatureStatus(prev => ({
@@ -430,7 +321,7 @@ const ProcessMode = () => {
             // Turn off heater if it's active
             turnOffHeater();
           }
-          
+
           // Close dialog and reset state
           setTemperatureStatus(prev => ({
             ...prev,
@@ -439,7 +330,7 @@ const ProcessMode = () => {
             isHeatingActive: false,
             heaterButtonDisabled: false
           }));
-          
+
           console.log('✅ Temperature requirement satisfied - dialog closed');
         }
       }
@@ -451,17 +342,17 @@ const ProcessMode = () => {
     if (temperatureStatus.isHeatingActive && selectedConfig && readData.temperature !== '--') {
       const realTimeTemp = parseFloat(readData.temperature);
       const targetTemp = temperatureStatus.targetTemperature || parseFloat(selectedConfig.temperature);
-      
+
       if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
         // Check if temperature is equal to or greater than target
         const isTempReached = realTimeTemp >= (targetTemp - 0.5); // 0.5°C tolerance
-        
+
         if (isTempReached) {
           console.log(`✅ Target temperature reached or exceeded! Real=${realTimeTemp}°C, Target=${targetTemp}°C`);
-          
+
           // Turn off heater
           turnOffHeater();
-          
+
           // Close dialog and reset state
           setTemperatureStatus(prev => ({
             ...prev,
@@ -483,10 +374,10 @@ const ProcessMode = () => {
         if (readData.temperature !== '--') {
           const realTimeTemp = parseFloat(readData.temperature);
           const targetTemp = parseFloat(selectedConfig.temperature);
-          
+
           if (!isNaN(realTimeTemp) && !isNaN(targetTemp)) {
             const isTempBelowTarget = realTimeTemp < (targetTemp - 0.5);
-            
+
             if (isTempBelowTarget) {
               console.log('🔥 Temperature check on entry: Heating required');
               setTemperatureStatus(prev => ({
@@ -510,9 +401,9 @@ const ProcessMode = () => {
         ...prev,
         heaterButtonDisabled: true
       }));
-      
+
       const result = await window.api.heating();
-      
+
       if (result && result.success) {
         console.log('✅ Heater turned ON successfully');
         setTemperatureStatus(prev => ({
@@ -538,9 +429,9 @@ const ProcessMode = () => {
   const turnOffHeater = async () => {
     try {
       console.log('🔥 Turning heater OFF...');
-      
+
       const result = await window.api.heating();
-      
+
       if (result && result.success) {
         console.log('✅ Heater turned OFF successfully');
         // Don't reset state here - let the temperature check handle it
@@ -572,21 +463,21 @@ const ProcessMode = () => {
     const handleLLSStatusChange = (event) => {
       if (event.detail === 'true') {
         console.log("🔄 COIL_LLS detected TRUE");
-        
+
         // Update COIL_LLS status
         setCoilLLSStatus(true);
-        
+
         // Only update status to READY if we're coming from HOMING state
         setSensorData(prev => {
           console.log(`📊 Previous status: ${prev.status}, isHoming: ${isHoming}`);
-          
+
           // If previous status was HOMING, change to READY
           if (prev.status === 'HOMING') {
             console.log("✅ Homing complete, changing status to READY");
             setIsHoming(false);
             return { ...prev, status: 'READY' };
           }
-          
+
           // If previous status was INSERTION, RETRACTION, or their paused states,
           // don't change the status
           console.log(`⚠️ COIL_LLS triggered but status remains: ${prev.status} (not from HOMING)`);
@@ -599,7 +490,7 @@ const ProcessMode = () => {
     };
 
     window.addEventListener('lls-status-change', handleLLSStatusChange);
-    
+
     return () => {
       window.removeEventListener('lls-status-change', handleLLSStatusChange);
     };
@@ -610,7 +501,7 @@ const ProcessMode = () => {
       console.error('No configuration selected for logging');
       return;
     }
-    
+
     try {
       console.log('🟡 Starting CSV logging with config:', selectedConfig);
       const result = await window.api.startCSV(selectedConfig);
@@ -644,21 +535,21 @@ const ProcessMode = () => {
     const timeNum = parseFloat(time);
     const distNum = parseFloat(distance);
     const forceNum = parseFloat(force);
-    
-    if (isNaN(timeNum) || isNaN(distNum) || isNaN(forceNum) || 
-        distance === '--' || force === '--') {
+
+    if (isNaN(timeNum) || isNaN(distNum) || isNaN(forceNum) ||
+      distance === '--' || force === '--') {
       return;
     }
-    
-    if (lastLoggedDataRef.current.time === timeNum && 
-        lastLoggedDataRef.current.distance === distNum && 
-        lastLoggedDataRef.current.force === forceNum) {
+
+    if (lastLoggedDataRef.current.time === timeNum &&
+      lastLoggedDataRef.current.distance === distNum &&
+      lastLoggedDataRef.current.force === forceNum) {
       return;
     }
-    
+
     try {
       console.log(`📊 ATTEMPTING LOG: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN, isLogging=${isLogging}`);
-      
+
       // Send data with config included
       await window.api.appendCSV({
         data: {
@@ -668,7 +559,7 @@ const ProcessMode = () => {
         },
         config: selectedConfig // Make sure config is included
       });
-      
+
       lastLoggedDataRef.current = { time: timeNum, distance: distNum, force: forceNum };
       console.log(`✅ SUCCESSFULLY LOGGED: Time=${timeNum}s, Distance=${distNum}mm, Force=${forceNum}mN`);
     } catch (error) {
@@ -681,7 +572,7 @@ const ProcessMode = () => {
       try {
         const connection = await window.api.checkConnection();
         setIsConnected(connection.connected);
-        
+
         if (!connection.connected) {
           setReadData(prev => ({
             ...prev,
@@ -697,13 +588,13 @@ const ProcessMode = () => {
     };
 
     checkConnection();
-    
+
     const handleModbusStatusChange = (event) => {
       setIsConnected(event.detail === 'connected');
     };
 
     window.addEventListener('modbus-status-change', handleModbusStatusChange);
-    
+
     return () => {
       window.removeEventListener('modbus-status-change', handleModbusStatusChange);
     };
@@ -712,8 +603,8 @@ const ProcessMode = () => {
   useEffect(() => {
     const initCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { width: 1280, height: 720 } 
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720 }
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -781,14 +672,14 @@ const ProcessMode = () => {
       window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDraggingCamera, isDraggingConfig, dragOffset]);
-  
+
 
   const handleStart = async () => {
     if (!selectedConfig) {
       console.error('No configuration selected');
       return;
     }
-    
+
     // Prevent start if heating is required
     if (temperatureStatus.isHeatingRequired) {
       console.log('❌ Cannot start process - heating required');
@@ -798,42 +689,58 @@ const ProcessMode = () => {
     try {
       console.log('🚀 Starting process...');
       let result;
-      
-      if (isPaused || isRetractionPaused) {
+
+      // Determine if we are starting fresh or from pause
+      const isResuming = isPaused || isRetractionPaused;
+
+      if (isResuming) {
         console.log('⏯️ Resuming process from pause...');
         result = await window.api.start();
-        
-        if (result && result.success) {
-          setIsProcessRunning(true);
-          setIsPaused(false);
-          setIsRetractionPaused(false);
-          
-          if (isRetractionEnabled && isRetractionActive) {
-            setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
-          } else {
-            setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
-          }
-        }
       } else {
         result = await window.api.start();
-        result = await window.api.heating();
-        
-        if (result && result.success) {
-          setIsProcessRunning(true);
-          setIsPaused(false);
-          setIsRetractionCompleted(false);
-          setIsHoming(false);
-          setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
-          startTimeRef.current = Date.now();
-        }
+        // Also ensure heater is on when starting fresh
+        await window.api.heating();
       }
-      
+
+      console.log("Start Result:", result);
+
       if (result && result.success) {
+        console.log("✅ Start command accepted by main process");
+        setIsProcessRunning(true);
+        setIsPaused(false);
+        setIsRetractionPaused(false);
+        setIsRetractionCompleted(false);
+        setIsHoming(false);
+
+        if (isRetractionEnabled && isRetractionActive) {
+          setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
+        } else {
+          setSensorData(prev => ({ ...prev, status: 'INSERTION' }));
+        }
+
+        // Handle time adjustment for seamless graph resumption
+        if (isResuming && pauseTimeRef.current) {
+          const pauseDuration = Date.now() - pauseTimeRef.current;
+          startTimeRef.current += pauseDuration;
+          console.log(`⏱️ Adjusted start time by ${pauseDuration}ms to account for pause`);
+          pauseTimeRef.current = null;
+        } else if (!isResuming) {
+          // Only reset start time if not resuming
+          startTimeRef.current = Date.now();
+          pauseTimeRef.current = null;
+          // Clear chart if new run
+          if (!isRetractionActive) {
+            setChartData([]);
+          }
+        }
+
         console.log('🟡 Process started/resumed, starting CSV logging...');
-        if (selectedConfig) {
-          startCsvLogging();
-        } else { 
-          console.error('❌ Cannot start logging: missing config');
+        if (!isLogging) {
+          if (selectedConfig) {
+            startCsvLogging();
+          } else {
+            console.error('❌ Cannot start logging: missing config');
+          }
         }
       } else {
         console.error('Failed to start process:', result?.message);
@@ -843,32 +750,7 @@ const ProcessMode = () => {
     }
   };
 
-  // const handlePause = async () => {
-  //   try {
-  //     console.log('⏸️ Pausing process...');
-  //     const result = await window.api.stop(); // Using stop API for pause
-      
-  //     if (result && result.success) {
-  //       setIsProcessRunning(false);
-  //       setIsPaused(true);
-        
-  //       // Update status based on current state
-  //       if (sensorData.status === 'INSERTION' || sensorData.status === 'INSERTION COMPLETED') {
-  //         setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
-  //       } else if (sensorData.status === 'RETRACTION') {
-  //         setIsRetractionPaused(true);
-  //         setSensorData(prev => ({ ...prev, status: 'RETRACTION PAUSED' }));
-  //       }
-        
-  //       console.log('Process paused');
-  //     } else {
-  //       console.error('Failed to pause process:', result?.message);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to pause process:', error);
-  //   }
-  // };
-  
+
   const handlePause = async () => {
     try {
       console.log('⏸️ Pausing process...');
@@ -878,17 +760,23 @@ const ProcessMode = () => {
         setIsProcessRunning(false);
         setIsPaused(true);
 
-        // Reset retraction state
-        setIsRetractionActive(false);
-        setIsRetractionPaused(false);
+        // Track pause time
+        pauseTimeRef.current = Date.now();
 
-        if (sensorData.status === 'INSERTION' || sensorData.status === 'INSERTION COMPLETED') {
-          setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
-        } else if (sensorData.status === 'RETRACTION') {
+        // Handle retraction pause state correctly
+        if (sensorData.status === 'RETRACTION') {
+          setIsRetractionPaused(true);
           setSensorData(prev => ({ ...prev, status: 'RETRACTION PAUSED' }));
+        } else {
+          setIsRetractionActive(false);
+          setIsRetractionPaused(false);
+
+          if (sensorData.status === 'INSERTION' || sensorData.status === 'INSERTION COMPLETED') {
+            setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
+          }
         }
 
-        console.log('Process paused & retraction stopped');
+        console.log('Process paused');
       }
     } catch (error) {
       console.error('Failed to pause process:', error);
@@ -899,14 +787,30 @@ const ProcessMode = () => {
   const handleRetraction = async () => {
     try {
       console.log('🔄 Starting retraction...');
+
+      // If running, stop first
+      if (isProcessRunning && !isPaused && !isRetractionPaused) {
+        console.log('⚠️ Process running, stopping before retraction...');
+        await window.api.stop();
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       const result = await window.api.retraction();
-      
+
       if (result && result.success) {
         setIsRetractionActive(true);
         setIsRetractionPaused(false);
         setIsRetractionCompleted(false);
         setIsProcessRunning(true);
+        setIsPaused(false);
         setSensorData(prev => ({ ...prev, status: 'RETRACTION' }));
+
+        // Ensure logging is active
+        if (!isLogging && selectedConfig) {
+          console.log('📝 Ensuring CSV logging is active for retraction');
+          startCsvLogging();
+        }
+
         console.log('✅ Retraction started');
       } else {
         console.error('Failed to start retraction:', result?.message);
@@ -920,7 +824,7 @@ const ProcessMode = () => {
     try {
       console.log('🔄 Resetting process...');
       const result = await window.api.reset();
-      
+
       if (result && result.success) {
         setIsProcessRunning(false);
         setIsPaused(false);
@@ -947,7 +851,7 @@ const ProcessMode = () => {
           targetTemperature: null,
           lastHeatingState: null
         });
-        
+
         stopCsvLogging();
         console.log('Process reset');
       } else {
@@ -961,7 +865,7 @@ const ProcessMode = () => {
   const shouldDisableButtons = () => {
     return isHoming || !selectedConfig;
   };
-  
+
   // Add this to prevent process start when heating is required
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
@@ -972,14 +876,6 @@ const ProcessMode = () => {
     if (isProcessRunning && !isPaused && !isRetractionPaused) return true;
     return false;
   };
-
-  // const shouldDisablePauseButton = () => {
-  //   if (shouldDisableButtons()) return true;
-  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
-  //   if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
-  //   if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
-  //   return false;
-  // };
   const shouldDisablePauseButton = () => {
     if (shouldDisableButtons()) return true;
     if (isRetractionCompleted) return true;
@@ -991,14 +887,6 @@ const ProcessMode = () => {
     return false;
   };
 
-  // const shouldDisableRetractionButton = () => {
-  //   if (shouldDisableButtons()) return true;
-  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
-  //   if (!isRetractionEnabled) return true;
-  //   if (isRetractionActive && !isRetractionPaused) return true;
-  //   return false;
-  // };
-
   // UPDATED: Reset button logic based on COIL_LLS status
   const shouldDisableRetractionButton = () => {
     if (shouldDisableButtons()) return true;
@@ -1009,18 +897,18 @@ const ProcessMode = () => {
 
     return false;
   };
-  
+
   const shouldDisableResetButton = () => {
     // If COIL_LLS is TRUE, disable reset button
     if (coilLLSStatus) {
       console.log('🔄 Reset button disabled because COIL_LLS is TRUE');
       return true;
     }
-    
+
     // Other conditions from original logic
     if (!selectedConfig || isHoming) return true;
     if (isRetractionCompleted) return true; // Disable when retraction is completed
-    
+
     return false;
   };
 
@@ -1083,7 +971,7 @@ const ProcessMode = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-center">
@@ -1104,7 +992,7 @@ const ProcessMode = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-3">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>0°C</span>
@@ -1112,19 +1000,19 @@ const ProcessMode = () => {
                     <span>{temperatureStatus.targetTemperature || selectedConfig?.temperature}°C</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="h-2 rounded-full transition-all duration-1000 bg-orange-500"
-                      style={{ 
-                        width: `${Math.min(100, (parseFloat(readData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%` 
+                      style={{
+                        width: `${Math.min(100, (parseFloat(readData.temperature) / (temperatureStatus.targetTemperature || 1)) * 100)}%`
                       }}
                     ></div>
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg mb-4">
                 <p className="font-medium text-orange-800 text-center">
-                  {temperatureStatus.isHeatingActive 
+                  {temperatureStatus.isHeatingActive
                     ? `Heating in progress. Waiting for temperature to reach ${temperatureStatus.targetTemperature || selectedConfig?.temperature}°C`
                     : `Real-time temperature (${readData.temperatureDisplay}) is below target (${temperatureStatus.targetTemperature || selectedConfig?.temperature}°C). Please turn on heating.`
                   }
@@ -1141,11 +1029,10 @@ const ProcessMode = () => {
                   <button
                     onClick={turnOnHeater}
                     disabled={temperatureStatus.heaterButtonDisabled}
-                    className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${
-                      temperatureStatus.heaterButtonDisabled
-                        ? 'bg-gray-400 cursor-not-allowed text-gray-200'
-                        : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
-                    }`}
+                    className={`flex-1 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 ${temperatureStatus.heaterButtonDisabled
+                      ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                      : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg'
+                      }`}
                   >
                     <Flame className="w-5 h-5" />
                     <span>
@@ -1166,10 +1053,10 @@ const ProcessMode = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="mt-4 text-center">
                 <p className="text-gray-500 text-sm">
-                  {temperatureStatus.isHeatingActive 
+                  {temperatureStatus.isHeatingActive
                     ? 'Dialog will close automatically when temperature reaches target'
                     : 'Process start will be enabled when temperature reaches target'
                   }
@@ -1179,7 +1066,7 @@ const ProcessMode = () => {
           </div>
         </div>
       )}
-      
+
       {showInfoModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -1305,9 +1192,8 @@ const ProcessMode = () => {
         </div>
       )}
 
-      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
-        showCameraPanel ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showCameraPanel ? 'translate-x-0' : '-translate-x-full'
+        }`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
@@ -1333,9 +1219,8 @@ const ProcessMode = () => {
         </div>
       </div>
 
-      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${
-        showConfigPanel ? 'translate-x-0' : 'translate-x-full'
-      }`}>
+      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showConfigPanel ? 'translate-x-0' : 'translate-x-full'
+        }`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-gray-900">Configuration</h3>
@@ -1346,25 +1231,25 @@ const ProcessMode = () => {
               <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
-          
+
           {selectedConfig ? (
             <div className="space-y-3">
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
                 <p className="text-gray-600 text-xs mb-1">Configuration Name</p>
                 <p className="text-sm font-bold text-blue-700">{selectedConfig.configName}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                   <p className="text-gray-600 text-xs mb-1">Distance</p>
                   <p className="text-sm font-bold text-green-700">{selectedConfig.pathlength} mm</p>
                 </div>
-                
+
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
                   <p className="text-gray-600 text-xs mb-1">Threshold Force</p>
                   <p className="text-sm font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p>
                 </div>
-                
+
                 <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">Temperature</p>
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.temperature}°C</p>
@@ -1374,7 +1259,7 @@ const ProcessMode = () => {
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                 </div>
               </div>
-              
+
               {/* NEW: COIL_LLS Status Display */}
               <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
                 <div className="flex items-center justify-between">
@@ -1384,8 +1269,8 @@ const ProcessMode = () => {
                   </div>
                 </div>
                 <p className="text-gray-500 text-xs mt-1">
-                  {coilLLSStatus 
-                    ? '✅ Machine is at home position. Reset disabled.' 
+                  {coilLLSStatus
+                    ? '✅ Machine is at home position. Reset disabled.'
                     : '🔄 Machine is away from home. Reset enabled.'}
                 </p>
               </div>
@@ -1406,11 +1291,10 @@ const ProcessMode = () => {
                 <button
                   onClick={handleBack}
                   disabled={shouldDisableBackButton()}
-                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group flex-shrink-0 ${
-                    shouldDisableBackButton()
-                      ? 'bg-gray-100 cursor-not-allowed text-gray-400'
-                      : 'p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200'
-                  }`}
+                  className={`p-1.5 sm:p-2 rounded-xl transition-all duration-300 group flex-shrink-0 ${shouldDisableBackButton()
+                    ? 'bg-gray-100 cursor-not-allowed text-gray-400'
+                    : 'p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200'
+                    }`}
                 >
                   <ArrowLeft className={`${isXlScreen ? 'w-6 h-6' : 'w-5 h-5'}`} />
                 </button>
@@ -1429,25 +1313,24 @@ const ProcessMode = () => {
             </div>
 
             <div className="flex items-center space-x-1 sm:space-x-3 flex-shrink-0">
-              <div className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1 sm:py-2 rounded-xl font-medium transition-all ${
-                isConnected 
-                  ? 'bg-green-50 text-green-700 border border-green-200 shadow-sm shadow-green-500/10' 
-                  : 'bg-red-50 text-red-700 border border-red-200 shadow-sm shadow-red-500/10'
-              }`}>
+              <div className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1 sm:py-2 rounded-xl font-medium transition-all ${isConnected
+                ? 'bg-green-50 text-green-700 border border-green-200 shadow-sm shadow-green-500/10'
+                : 'bg-red-50 text-red-700 border border-red-200 shadow-sm shadow-red-500/10'
+                }`}>
                 <Usb className={`${isXlScreen ? 'w-5 h-5' : 'w-4 h-4'}`} />
                 <span className="text-xs sm:text-sm font-semibold hidden sm:inline">
                   {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
                 </span>
               </div>
 
-              <button 
+              <button
                 onClick={() => setShowInfoModal(true)}
                 className="group bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-xl hover:shadow-2xl border border-blue-400/30"
               >
                 <Info className={`${isXlScreen ? 'w-7 h-7' : 'w-5 h-5'} group-hover:scale-110 transition-transform duration-300`} />
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   const confirmed = window.confirm("Are you sure you want to exit?");
                   if (confirmed) {
@@ -1455,15 +1338,13 @@ const ProcessMode = () => {
                   }
                 }}
                 disabled={shouldDisablePowerButton()}
-                className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-lg border ${
-                  shouldDisablePowerButton() 
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-400 border-gray-300' 
-                    : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30'
-                }`}
+                className={`group rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 shadow-lg border ${shouldDisablePowerButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-400 border-gray-300'
+                  : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white hover:-translate-y-1 hover:shadow-xl border-red-400/30'
+                  }`}
               >
-                <Power className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-transform duration-300 ${
-                  shouldDisablePowerButton() ? '' : 'group-hover:scale-110'
-                }`} />
+                <Power className={`w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 transition-transform duration-300 ${shouldDisablePowerButton() ? '' : 'group-hover:scale-110'
+                  }`} />
               </button>
             </div>
           </div>
@@ -1564,7 +1445,7 @@ const ProcessMode = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="p-4 h-[calc(100%-60px)]">
                 <div className="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 shadow-inner">
                   <video
@@ -1589,7 +1470,7 @@ const ProcessMode = () => {
               <h3 className={`${isXlScreen ? 'text-lg' : 'text-base'} font-bold text-gray-900`}>Real-time Analytics</h3>
               <p className="text-gray-600 text-xs hidden sm:block">Force & Distance vs Time</p>
             </div>
-            
+
             {!isXlScreen && (
               <div className="mb-3 grid grid-cols-2 gap-2 flex-shrink-0">
                 <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
@@ -1625,32 +1506,29 @@ const ProcessMode = () => {
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                        sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                      <div className={`w-6 h-6 rounded-md flex items-center justify-center ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
                         sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                        sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
-                        sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
-                        'bg-gradient-to-br from-gray-400 to-gray-500'
-                      }`}>
+                          sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
+                            sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' :
+                              'bg-gradient-to-br from-gray-400 to-gray-500'
+                        }`}>
                         <Activity className="w-3 h-3 text-white" />
                       </div>
                       <p className="text-gray-600 text-xs font-medium">Status</p>
                     </div>
-                    <div className={`w-2 h-2 rounded-full ${
-                      sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-green-500 animate-pulse' :
+                    <div className={`w-2 h-2 rounded-full ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-green-500 animate-pulse' :
                       sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'bg-yellow-500' :
-                      sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
-                      sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-blue-500' : 'bg-gray-400'
-                    }`}></div>
+                        sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
+                          sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-blue-500' : 'bg-gray-400'
+                      }`}></div>
                   </div>
-                  <p className={`text-sm font-bold ${
-                    sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'text-green-600' :
+                  <p className={`text-sm font-bold ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'text-green-600' :
                     sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'text-yellow-600' :
-                    sensorData.status === 'HOMING' ? 'text-purple-600' :
-                    sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
-                  }`}>{sensorData.status}</p>
+                      sensorData.status === 'HOMING' ? 'text-purple-600' :
+                        sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
+                    }`}>{sensorData.status}</p>
                 </div>
-                
+
                 {/* NEW: COIL_LLS Status Display for small screens */}
                 <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-200/50 p-2">
                   <div className="flex items-center justify-between mb-1">
@@ -1669,10 +1547,10 @@ const ProcessMode = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 30 }}>
+                <LineChart data={chartData} margin={{ top: 30, right: 30, left: 10, bottom: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
 
                   <XAxis
@@ -1730,25 +1608,25 @@ const ProcessMode = () => {
                 <h3 className="text-lg font-bold text-gray-900">Active Configuration</h3>
                 <p className="text-gray-600 text-xs">Current process parameters</p>
               </div>
-              
+
               {selectedConfig ? (
                 <div className="space-y-2.5">
                   <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-3 rounded-xl border border-blue-200/50">
                     <p className="text-gray-600 text-xs mb-0.5">Configuration Name</p>
                     <p className="text-base font-bold text-blue-700">{selectedConfig.configName}</p>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-2.5">
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Distance</p>
                       <p className="text-base font-bold text-green-700">{selectedConfig.pathlength} mm</p>
                     </div>
-                    
+
                     <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-3 rounded-xl border border-cyan-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Threshold Force</p>
                       <p className="text-base font-bold text-blue-700">{selectedConfig.thresholdForce} mN</p>
                     </div>
-                    
+
                     <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
@@ -1758,7 +1636,7 @@ const ProcessMode = () => {
                       <p className="text-base font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                     </div>
                   </div>
-                  
+
                   {/* NEW: COIL_LLS Status Display for large screens */}
                   <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
                     <div className="flex items-center justify-between">
@@ -1768,8 +1646,8 @@ const ProcessMode = () => {
                       </div>
                     </div>
                     <p className="text-gray-500 text-xs mt-1">
-                      {coilLLSStatus 
-                        ? '✅ Machine is at home position. Reset disabled.' 
+                      {coilLLSStatus
+                        ? '✅ Machine is at home position. Reset disabled.'
                         : '🔄 Machine is away from home. Reset enabled.'}
                     </p>
                   </div>
@@ -1789,7 +1667,7 @@ const ProcessMode = () => {
                 <h3 className="text-lg font-bold text-gray-900">Real-time Sensors</h3>
                 <p className="text-gray-600 text-xs">Live monitoring data</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
@@ -1824,32 +1702,29 @@ const ProcessMode = () => {
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center space-x-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
-                        sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
                         sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'bg-gradient-to-br from-yellow-500 to-orange-500' :
-                        sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
-                        sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' : 
-                        'bg-gradient-to-br from-gray-400 to-gray-500'
-                      }`}>
+                          sensorData.status === 'HOMING' ? 'bg-gradient-to-br from-purple-500 to-indigo-500' :
+                            sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-gradient-to-br from-blue-500 to-indigo-500' :
+                              'bg-gradient-to-br from-gray-400 to-gray-500'
+                        }`}>
                         <Activity className="w-4 h-4 text-white" />
                       </div>
                       <p className="text-gray-600 text-xs font-medium">Status</p>
                     </div>
-                    <div className={`w-2.5 h-2.5 rounded-full ${
-                      sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-green-500 animate-pulse' :
+                    <div className={`w-2.5 h-2.5 rounded-full ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'bg-green-500 animate-pulse' :
                       sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'bg-yellow-500' :
-                      sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
-                      sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-blue-500' : 'bg-gray-400'
-                    }`}></div>
+                        sensorData.status === 'HOMING' ? 'bg-purple-500 animate-pulse' :
+                          sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'bg-blue-500' : 'bg-gray-400'
+                      }`}></div>
                   </div>
-                  <p className={`text-xl font-bold ${
-                    sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'text-green-600' :
+                  <p className={`text-xl font-bold ${sensorData.status === 'INSERTION' || sensorData.status === 'RETRACTION' ? 'text-green-600' :
                     sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED' ? 'text-yellow-600' :
-                    sensorData.status === 'HOMING' ? 'text-purple-600' :
-                    sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
-                  }`}>{sensorData.status}</p>
+                      sensorData.status === 'HOMING' ? 'text-purple-600' :
+                        sensorData.status === 'READY' || sensorData.status === 'INSERTION COMPLETED' ? 'text-blue-600' : 'text-gray-600'
+                    }`}>{sensorData.status}</p>
                 </div>
-                
+
                 {/* NEW: COIL_LLS Status Display in sensors panel */}
                 <div className="col-span-2 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200/50 p-3">
                   <div className="flex items-center justify-between mb-1.5">
@@ -1870,8 +1745,8 @@ const ProcessMode = () => {
                     </p>
                   </div>
                   <p className="text-gray-500 text-xs mt-1">
-                    {coilLLSStatus 
-                      ? 'Reset button is disabled when COIL_LLS is TRUE' 
+                    {coilLLSStatus
+                      ? 'Reset button is disabled when COIL_LLS is TRUE'
                       : 'Reset button is enabled when COIL_LLS is FALSE'}
                   </p>
                 </div>
@@ -1886,57 +1761,53 @@ const ProcessMode = () => {
                 <p className="text-gray-600 text-xs">Manage process execution</p>
               </div>
             )}
-            
+
             <div className="flex space-x-2 sm:space-x-3 justify-center max-w-2xl mx-auto">
               <button
                 onClick={handleStart}
                 disabled={shouldDisableStartButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableStartButton()
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
-                }`}
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 sm:py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableStartButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-xl shadow-green-500/25 border border-green-400/30'
+                  }`}
               >
                 <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">{getStartButtonText()}</span>
               </button>
-              
+
               <button
                 onClick={handlePause}
                 disabled={shouldDisablePauseButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisablePauseButton()
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
-                }`}
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisablePauseButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-xl shadow-yellow-500/25 border border-yellow-400/30'
+                  }`}
               >
                 <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">PAUSE</span>
               </button>
-              
+
               <button
                 onClick={handleRetraction}
                 disabled={shouldDisableRetractionButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableRetractionButton()
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30'
-                }`}
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableRetractionButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-xl shadow-purple-500/25 border border-purple-400/30'
+                  }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">
                   {getRetractionButtonText()}
                 </span>
               </button>
-              
+
               <button
                 onClick={handleReset}
                 disabled={shouldDisableResetButton()}
-                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${
-                  shouldDisableResetButton()
-                    ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
-                    : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
-                }`}
+                className={`flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-3 rounded-lg sm:rounded-xl font-bold transition-all transform hover:scale-[1.02] min-w-0 ${shouldDisableResetButton()
+                  ? 'bg-gray-200 cursor-not-allowed text-gray-500 border border-gray-300'
+                  : 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-xl shadow-red-500/25 border border-red-400/30'
+                  }`}
               >
                 <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">RESET</span>
@@ -1945,12 +1816,12 @@ const ProcessMode = () => {
                 )}
               </button>
             </div>
-            
+
             {/* NEW: Reset button status indicator */}
             <div className="mt-2 text-center">
               <p className={`text-xs ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
-                {coilLLSStatus 
-                  ? '✅ Reset disabled - Machine is at home position (COIL_LLS = TRUE)' 
+                {coilLLSStatus
+                  ? '✅ Reset disabled - Machine is at home position (COIL_LLS = TRUE)'
                   : '🔄 Reset enabled - Machine is away from home (COIL_LLS = FALSE)'}
               </p>
             </div>
