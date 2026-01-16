@@ -701,7 +701,7 @@ const ProcessLogs = () => {
               )}
 
               {/* Graph Statistics */}
-              {selectedLog && graphData.length > 0 && (
+              {/* {selectedLog && graphData.length > 0 && (
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
                     <p className="text-blue-700 text-sm font-medium mb-1">
@@ -741,10 +741,10 @@ const ProcessLogs = () => {
                     </p>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
 
-            {/* Raw Data Preview */}
+            {/* Raw Data Preview
             {selectedLog && (
               <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
                 <h3 className="text-lg font-semibold text-slate-800 mb-4">
@@ -797,7 +797,7 @@ const ProcessLogs = () => {
                   </p>
                 )}
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
@@ -985,7 +985,7 @@ const ProcessLogs = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-start space-x-3">
+                  {/* <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       The graph shows{" "}
@@ -993,15 +993,15 @@ const ProcessLogs = () => {
                       with curve markers indicating where each curve occurred
                       during the test.
                     </p>
-                  </div>
+                  </div> */}
 
-                  <div className="flex items-start space-x-3">
+                  {/* <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       Configuration details shown are exactly what was used
                       during the test, including curve distances if configured.
                     </p>
-                  </div>
+                  </div> */}
 
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>

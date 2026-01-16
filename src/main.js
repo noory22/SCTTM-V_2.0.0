@@ -914,10 +914,10 @@ async function readPLCData() {
   return {
     success: true,
     distance: plcState.distance,
-    distanceDisplay: `${plcState.distance} mm`,
+    distanceDisplay: `${plcState.distance.toFixed(2)} mm`,
 
     force_mN: plcState.force_mN,
-    forceDisplay: `${plcState.force_mN} mN`,
+    forceDisplay: `${plcState.force_mN.toFixed(1)} mN`,
 
     temperature: plcState.temperature,
     temperatureDisplay: `${plcState.temperature.toFixed(1)} °C`,

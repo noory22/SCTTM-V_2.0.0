@@ -95,8 +95,8 @@ const CreateConfig = () => {
       newErrors.thresholdForce = 'Threshold Force is required';
     } else if (isNaN(formData.thresholdForce) || parseFloat(formData.thresholdForce) <= 0) {
       newErrors.thresholdForce = 'Please enter a valid positive number';
-    } else if (parseFloat(formData.thresholdForce) < 1 || parseFloat(formData.thresholdForce) > 10000) {
-      newErrors.thresholdForce = 'Threshold Force must be between 1mN and 10000mN';
+    } else if (parseFloat(formData.thresholdForce) < 10 || parseFloat(formData.thresholdForce) > 10000) {
+      newErrors.thresholdForce = 'Threshold Force must be between 10mN and 10000mN';
     }
 
     // Validate Temperature (numeric and range)
@@ -403,7 +403,7 @@ const CreateConfig = () => {
                   name="thresholdForce"
                   value={formData.thresholdForce}
                   onChange={handleInputChange}
-                  placeholder="Enter Threshold Force in range 1mN - 10000mN"
+                  placeholder="Enter Threshold Force in range 10mN - 10000mN"
                   className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                     errors.thresholdForce 
                       ? 'border-red-300 focus:border-red-500' 
@@ -597,28 +597,28 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Configuration Name</span> must contain only alphabets and numbers (no special characters)
+                      <span className="font-semibold">Configuration Name</span> must contain only alphabets(no special characters)
                     </p>
                   </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      The values of Path Length, Threshold Force, Temperature, Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers</span>
+                      The values of Path Length, Threshold Force, Temperature, Retraction Stroke Length, and Number of Curves <span className="font-semibold">required and must be positive numbers.</span>
                     </p>
                   </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Rig Path Length</span> should be in range <span className="font-semibold">50 - 800 mm</span> 
+                      <span className="font-semibold">Rig Path Length</span> should be in range <span className="font-semibold">30 - 2000 mm</span> 
                     </p>
                   </div>
 
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Threshold Force </span> should be in range  <span className="font-semibold"> 1mN - 2000mN </span> 
+                      <span className="font-semibold">Threshold Force </span> should be in range  <span className="font-semibold"> 10mN - 2000mN </span> 
                     </p>
                   </div>
 
@@ -632,7 +632,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">5mm - 30mm</span>
+                      <span className="font-semibold">Retraction Stroke Length</span> should be in range <span className="font-semibold">10mm - 30mm</span>
                     </p>
                   </div>
                   
@@ -643,13 +643,13 @@ const CreateConfig = () => {
                     </p>
                   </div>
                   
-                  {/* ADDED: Help modal entry for Curve Distances */}
+                  {/* ADDED: Help modal entry for Curve Distances
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       <span className="font-semibold">Curve Distances</span> are required for each curve position (A, B, C, etc.) and should be between <span className="font-semibold">1mm and 1000mm</span>
                     </p>
-                  </div>
+                  </div> */}
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>

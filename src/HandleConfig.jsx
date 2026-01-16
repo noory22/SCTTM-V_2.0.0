@@ -68,82 +68,6 @@ const HandleConfig = ({ mode = 'load' }) => {
     }
   };
 
-
-  // const handleProcessMode = async () => {
-  //   if (!selectedConfig) {
-  //     alert('Please select a configuration first.');
-  //     return;
-  //   }
-    
-  //   // DIRECT SEND - No loading state
-  //   try {
-  //     // Send data immediately without waiting for response
-  //     window.api.sendProcessMode({
-  //       pathlength: selectedConfig.pathlength,
-  //       thresholdForce: selectedConfig.thresholdForce,
-  //       temperature: selectedConfig.temperature,
-  //       retractionLength: selectedConfig.retractionLength
-  //     }).catch(error => {
-  //       // Log error but don't block UI
-  //       console.error('PLC send error (non-blocking):', error);
-  //     });
-      
-  //     // Store selected config for process screen
-  //     localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-      
-  //     // Navigate immediately without waiting
-  //     navigate('/process-mode');
-      
-  //   } catch (error) {
-  //     // Still navigate even if there's an error
-  //     console.error('Configuration transfer error (non-blocking):', error);
-  //     localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-  //     navigate('/process-mode');
-  //   }
-  // };
- 
-  // const handleProcessMode = async () => {
-  //   if (!selectedConfig) {
-  //     alert('Please select a configuration first.');
-  //     return;
-  //   }
-    
-  //   try {
-  //     // Show loading indicator
-  //     setIsLoading(true);
-      
-  //     // Wait for the process mode to be sent COMPLETELY
-  //     const success = await window.api.sendProcessMode({
-  //       pathlength: selectedConfig.pathlength,
-  //       thresholdForce: selectedConfig.thresholdForce,
-  //       temperature: selectedConfig.temperature,
-  //       retractionLength: selectedConfig.retractionLength
-  //     });
-      
-  //     // Store selected config for process screen
-  //     localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-      
-  //     if (success) {
-  //       console.log('✅ Configuration successfully sent to PLC');
-  //       navigate('/process-mode');
-  //     } else {
-  //       console.warn('⚠️ Some configuration values may not have been sent correctly');
-  //       // Optional: Show warning but still navigate
-  //       alert('Warning: Some configuration values may not have been sent to the PLC correctly. Please verify on the process screen.');
-  //       navigate('/process-mode');
-  //     }
-      
-  //   } catch (error) {
-  //     console.error('Configuration transfer error:', error);
-  //     // Still navigate but show error
-  //     localStorage.setItem('selectedConfig', JSON.stringify(selectedConfig));
-  //     alert('Error sending configuration to PLC. Please verify settings on the process screen.');
-  //     navigate('/process-mode');
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleDeleteConfig = async () => {
     if (!selectedConfig) {
       alert('Please select a configuration to delete.');
@@ -212,17 +136,17 @@ const HandleConfig = ({ mode = 'load' }) => {
   const getHelpContent = () => {
     if (mode === 'load') {
       return [
-        'Select a configuration from the dropdown to load its settings',
-        'All configuration values will be populated automatically',
-        'Click "Process Mode" to continue with the selected configuration',
-        'Configuration is sent directly to PLC and navigation happens immediately',
-        'No waiting for PLC response - process continues immediately'
+        'Select a configuration from the dropdown to load its settings.',
+        'All configuration values will be populated automatically.',
+        'Click "Process Mode" to continue with the selected configuration.',
+        'Configuration is sent directly to PLC and navigation happens immediately.',
+        
       ];
     } else {
       return [
-        'Select a configuration to delete from your saved configurations',
-        'This action cannot be undone - deleted configurations are permanently removed',
-        'Confirmation will be required before deletion'
+        'Select a configuration to delete from your saved configurations.',
+        'This action cannot be undone - deleted configurations are permanently removed.',
+        'Confirmation will be required before deletion.'
       ];
     }
   };
@@ -406,7 +330,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                     disabled={!selectedConfig}
                     className={`w-full md:w-auto md:ml-auto md:block ${getButtonColor()} disabled:from-slate-400 disabled:to-slate-500 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl disabled:shadow-md transition-all duration-200 transform hover:-translate-y-0.5 disabled:transform-none flex items-center justify-center space-x-2 min-w-[160px]`}
                   >
-                    {getButtonIcon()}
+                    {/* {getButtonIcon()} */}
                     <span>{getButtonText()}</span>
                   </button>
                 </div>

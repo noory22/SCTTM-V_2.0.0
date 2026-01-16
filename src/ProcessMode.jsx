@@ -128,6 +128,152 @@ const ProcessMode = () => {
     };
   }, [sensorData.status]);
 
+  // Also check COIL_LLS in PLC data when reading sensor data
+  // useEffect(() => {
+  //   let intervalId;
+
+  //   const pollSensorData = () => {
+  //     window.api.readData()
+  //       .then(data => {
+  //         if (data && data.success) {
+  //           setReadData({
+  //             temperature: data.temperature || '--',
+  //             temperatureDisplay: data.temperatureDisplay || '-- °C',
+  //             force: data.force_mN || '--',
+  //             forceDisplay: data.forceDisplay || '-- mN',
+  //             force_mN: data.force_mN || '--',
+  //             force_mN_Display: data.forceDisplay || '-- mN',
+  //             distance: data.distance || '--',
+  //             distanceDisplay: data.distanceDisplay || '-- mm'
+  //           });
+
+  //           setSensorData(prev => ({
+  //             ...prev,
+  //             temperature: data.temperatureDisplay || '--',
+  //             force: data.forceDisplay || '--',
+  //             distance: data.distanceDisplay || '--'
+  //           }));
+
+  //           // NEW: Update COIL_LLS status from PLC data if available
+  //           if (data.coilLLS !== undefined) {
+  //             const newCoilLLSStatus = Boolean(data.coilLLS);
+  //             setCoilLLSStatus(newCoilLLSStatus);
+
+  //             // If COIL_LLS becomes TRUE and we were homing, update status
+  //             if (newCoilLLSStatus && sensorData.status === 'HOMING') {
+  //               console.log("✅ Homing complete (from PLC data) - changing status to READY");
+  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
+  //               setIsHoming(false);
+  //             }
+  //           }
+
+  //           // Handle curve and distance logic
+  //           if (selectedConfig && data.distance !== '--' && data.distance !== undefined && 
+  //               !isRetractionEnabled && isProcessRunning && !isPaused) {
+
+  //             const currentDistance = parseFloat(data.distance);
+  //             const targetDistance = parseFloat(selectedConfig.pathlength);
+
+  //             const curves = selectedConfig?.curveDistances || {};
+  //             Object.entries(curves).forEach(([curveLabel, curveVal]) => {
+  //               const threshold = Number(curveVal);
+
+  //               if (!reachedCurves[curveLabel] && currentDistance >= threshold) {
+  //                 console.log(`🔥 Curve ${curveLabel} reached at ${threshold} mm`);
+  //                 setReachedCurves(prev => ({
+  //                   ...prev,
+  //                   [curveLabel]: true
+  //                 }));
+  //               }
+  //             });
+
+  //             console.log(`🔍 Distance Check: Current=${currentDistance}mm, Target=${targetDistance}mm, isValid=${!isNaN(currentDistance) && !isNaN(targetDistance)}`);
+
+  //             if (!isNaN(currentDistance) && !isNaN(targetDistance)) {
+  //               if (Math.round(currentDistance) === Math.round(targetDistance)) {
+  //                 console.log(`✅✅✅ Target distance reached exactly! ${currentDistance}mm = ${targetDistance}mm (rounded)`);
+  //                 setIsRetractionEnabled(true);
+  //                 setSensorData(prev => ({ ...prev, status: 'INSERTION COMPLETED' }));
+  //               } else {
+  //                 console.log(`📏 Not yet reached: ${currentDistance}mm vs ${targetDistance}mm (rounded: ${Math.round(currentDistance)} vs ${Math.round(targetDistance)})`);
+  //               }
+  //             }
+  //           }
+
+  //           // Check retraction completion
+  //           if (isRetractionActive && !isRetractionPaused && data.distance !== '--' && data.distance !== undefined) {
+  //             const currentDistance = parseFloat(data.distance);
+  //             console.log(`🔍 Retraction Check: Current distance=${currentDistance}mm, isRetractionActive=${isRetractionActive}, isRetractionPaused=${isRetractionPaused}`);
+
+  //             if (!isNaN(currentDistance) && Math.round(currentDistance) === 0) {
+  //               console.log('✅✅✅ RETRACTION COMPLETED! Distance = 0mm');
+  //               setIsRetractionCompleted(true);
+  //               setIsRetractionActive(false);
+  //               setIsRetractionEnabled(false);
+  //               setIsProcessRunning(false);
+  //               setSensorData(prev => ({ ...prev, status: 'READY' }));
+
+  //               // Clear chart data
+  //               setChartData([]);
+
+  //               // Clear reached curves
+  //               setReachedCurves({});
+
+  //               // Stop CSV logging
+  //               stopCsvLogging();
+
+  //               console.log('🔄 System reset to READY state after retraction completion');
+  //             }
+  //           }
+
+  //           // Update chart data and logging
+  //           if (isProcessRunning || sensorData.status === 'PAUSED' || sensorData.status === 'RETRACTION PAUSED') {
+  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
+  //             const timeFormatted = parseFloat(currentTime.toFixed(1));
+
+  //             setChartData(prev => {
+  //               const newDataPoint = {
+  //                 time: timeFormatted,
+  //                 distance: parseFloat(data.distance) || 0,
+  //                 force: parseFloat(data.force_mN) || 0
+  //               };
+
+  //               const newData = [...prev, newDataPoint];
+  //               return newData;
+  //             });
+  //           }
+
+  //           if (isProcessRunning && !isPaused && data.distance !== '--' && data.force_mN !== '--') {
+  //             const currentTime = (Date.now() - startTimeRef.current) / 1000;
+  //             logSensorData(currentTime.toFixed(1), data.distance, data.force_mN);
+  //           }
+  //         } else if (data && !data.success) {
+  //           setReadData(prev => ({
+  //             ...prev,
+  //             temperatureDisplay: '-- °C',
+  //             forceDisplay: '-- mN',
+  //             distanceDisplay: '-- mm'
+  //           }));
+  //         }
+  //       })
+  //       .catch(error => {
+  //         console.error('Error polling sensor data:', error);
+  //       });
+  //   };
+
+  //   if (isConnected) {
+  //     intervalId = setInterval(pollSensorData, 1500);
+  //     pollSensorData(); // Initial call
+  //   }
+
+  //   return () => {
+  //     if (intervalId) {
+  //       clearInterval(intervalId);
+  //     }
+  //   };
+  // }, [isConnected, isProcessRunning, isPaused, sensorData.status, selectedConfig, isRetractionEnabled, isRetractionActive, isRetractionPaused]);
+
+
   useEffect(() => {
     let intervalId;
 
@@ -140,13 +286,19 @@ const ProcessMode = () => {
           const formatVal = (val, unit) => (val !== undefined && val !== null && val !== '--') ? `${val} ${unit}` : `-- ${unit}`;
           const rawVal = (val) => (val !== undefined && val !== null) ? val : '--';
 
+          // Helper for number formatting
+          const toFixed2 = (val) => {
+            const num = parseFloat(val);
+            return isNaN(num) ? val : num.toFixed(2);
+          };
+
           setReadData({
             temperature: rawVal(data.temperature),
             temperatureDisplay: formatVal(data.temperature, '°C'),
             force: rawVal(data.force_mN),
-            forceDisplay: formatVal(data.force_mN, 'mN'),
+            forceDisplay: formatVal(toFixed2(data.force_mN), 'mN'),
             force_mN: rawVal(data.force_mN),
-            force_mN_Display: formatVal(data.force_mN, 'mN'),
+            force_mN_Display: formatVal(toFixed2(data.force_mN), 'mN'),
             distance: rawVal(data.distance),
             distanceDisplay: formatVal(data.distance, 'mm')
           });
@@ -154,9 +306,14 @@ const ProcessMode = () => {
           setSensorData(prev => ({
             ...prev,
             temperature: formatVal(data.temperature, '°C'),
-            force: formatVal(data.force_mN, 'mN'),
+            force: formatVal(toFixed2(data.force_mN), 'mN'),
             distance: formatVal(data.distance, 'mm')
           }));
+
+          // Updated: Continuously update COIL_LLS status from polling
+          if (data.coilLLS !== undefined) {
+            setCoilLLSStatus(Boolean(data.coilLLS));
+          }
 
           // ---------------------------------------------------------------------------
           // NEW: Auto-Pause if Force Threshold Exceeded
@@ -876,6 +1033,14 @@ const ProcessMode = () => {
     if (isProcessRunning && !isPaused && !isRetractionPaused) return true;
     return false;
   };
+
+  // const shouldDisablePauseButton = () => {
+  //   if (shouldDisableButtons()) return true;
+  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
+  //   if (!isProcessRunning && !isPaused && !isRetractionPaused) return true;
+  //   if (sensorData.status === 'INSERTION COMPLETED' && !isRetractionActive) return true;
+  //   return false;
+  // };
   const shouldDisablePauseButton = () => {
     if (shouldDisableButtons()) return true;
     if (isRetractionCompleted) return true;
@@ -886,6 +1051,14 @@ const ProcessMode = () => {
 
     return false;
   };
+
+  // const shouldDisableRetractionButton = () => {
+  //   if (shouldDisableButtons()) return true;
+  //   if (isRetractionCompleted) return true; // Disable when retraction is completed
+  //   if (!isRetractionEnabled) return true;
+  //   if (isRetractionActive && !isRetractionPaused) return true;
+  //   return false;
+  // };
 
   // UPDATED: Reset button logic based on COIL_LLS status
   const shouldDisableRetractionButton = () => {
@@ -1261,7 +1434,7 @@ const ProcessMode = () => {
               </div>
 
               {/* NEW: COIL_LLS Status Display */}
-              <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
+              {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
                 <div className="flex items-center justify-between">
                   <p className="text-gray-600 text-xs mb-1">COIL_LLS Status</p>
                   <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -1273,7 +1446,7 @@ const ProcessMode = () => {
                     ? '✅ Machine is at home position. Reset disabled.'
                     : '🔄 Machine is away from home. Reset enabled.'}
                 </p>
-              </div>
+              </div> */}
             </div>
           ) : (
             <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
@@ -1530,7 +1703,7 @@ const ProcessMode = () => {
                 </div>
 
                 {/* NEW: COIL_LLS Status Display for small screens */}
-                <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-200/50 p-2">
+                {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg border border-gray-200/50 p-2">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
                       <div className={`w-6 h-6 rounded-md flex items-center justify-center ${coilLLSStatus ? 'bg-green-500' : 'bg-red-500'}`}>
@@ -1544,7 +1717,7 @@ const ProcessMode = () => {
                   <p className="text-gray-500 text-xs mt-0.5">
                     {coilLLSStatus ? 'At home' : 'Away'}
                   </p>
-                </div>
+                </div> */}
               </div>
             )}
 
@@ -1638,7 +1811,7 @@ const ProcessMode = () => {
                   </div>
 
                   {/* NEW: COIL_LLS Status Display for large screens */}
-                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
+                  {/* <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-3 rounded-xl border border-gray-200/50">
                     <div className="flex items-center justify-between">
                       <p className="text-gray-600 text-xs mb-0.5">COIL_LLS Status</p>
                       <div className={`px-2 py-1 rounded-full text-xs font-medium ${coilLLSStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -1650,7 +1823,7 @@ const ProcessMode = () => {
                         ? '✅ Machine is at home position. Reset disabled.'
                         : '🔄 Machine is away from home. Reset enabled.'}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               ) : (
                 <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded-r-xl">
@@ -1726,7 +1899,7 @@ const ProcessMode = () => {
                 </div>
 
                 {/* NEW: COIL_LLS Status Display in sensors panel */}
-                <div className="col-span-2 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200/50 p-3">
+                {/* <div className="col-span-2 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200/50 p-3">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center space-x-2">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${coilLLSStatus ? 'bg-gradient-to-br from-green-500 to-emerald-500' : 'bg-gradient-to-br from-red-500 to-orange-500'}`}>
@@ -1749,7 +1922,7 @@ const ProcessMode = () => {
                       ? 'Reset button is disabled when COIL_LLS is TRUE'
                       : 'Reset button is enabled when COIL_LLS is FALSE'}
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
           )}
@@ -1818,13 +1991,13 @@ const ProcessMode = () => {
             </div>
 
             {/* NEW: Reset button status indicator */}
-            <div className="mt-2 text-center">
+            {/* <div className="mt-2 text-center">
               <p className={`text-xs ${coilLLSStatus ? 'text-green-600' : 'text-red-600'}`}>
                 {coilLLSStatus
                   ? '✅ Reset disabled - Machine is at home position (COIL_LLS = TRUE)'
                   : '🔄 Reset enabled - Machine is away from home (COIL_LLS = FALSE)'}
               </p>
-            </div>
+            </div> */}
           </div>
         </section>
       </main>
