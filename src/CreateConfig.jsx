@@ -77,8 +77,10 @@ const CreateConfig = () => {
     // Validate Configuration Name (alphabets only)
     if (!formData.configName.trim()) {
       newErrors.configName = 'Configuration name is required';
-    } else if (!/^[A-Za-z]+$/.test(formData.configName)) {
-      newErrors.configName = 'Configuration name must contain only alphabets';
+    } else if (!/^[A-Za-z0-9]+$/.test(formData.configName)) {
+      newErrors.configName = 'Configuration name must contain only alphabets and numbers';
+    } else if (formData.configName.length > 30) {
+      newErrors.configName = 'Configuration name cannot exceed 20 characters';
     }
     
     // Validate Path Length (numeric and range)
@@ -158,9 +160,12 @@ const CreateConfig = () => {
     // Validation based on field type
     if (name === 'configName') {
       // Only allow alphabets for config name
-      if (!/^[a-zA-Z]*$/.test(value)) {
+      if (name === 'configName') {
+      // Only allow alphabets for config name
+      if (!/^[a-zA-Z0-9]*$/.test(value) || value.length > 30) {
         return;
       }
+    }
     }
     
     if (name === 'pathlength' || name === 'thresholdForce' || name === 'temperature' || name === 'retractionLength' || name === 'numberOfCurves') {
@@ -340,7 +345,7 @@ const CreateConfig = () => {
               {/* Configuration Name */}
               <div className="space-y-2">
                 <label htmlFor="configName" className="block text-sm font-semibold text-slate-700">
-                  Configuration Name (Alphabets only)
+                  Configuration Name
                 </label>
                 <input
                   type="text"

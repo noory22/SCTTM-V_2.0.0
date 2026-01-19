@@ -30,7 +30,8 @@ const COIL_LLS = 1000;
 const COIL_START = 2002;
 const COIL_STOP = 2003;
 const COIL_RESET = 2004;
-const COIL_HEATING = 2005;
+const COIL_HEATING = 2012;
+const COIL_HEATER = 2005;
 const COIL_RETRACTION = 2006;
 const COIL_MANUAL = 2070;
 const COIL_INSERTION = 2008;
@@ -1073,6 +1074,7 @@ function safeExecute(commandName, action) {
 
 const coilState = {
   heating: false,
+  heater: false,
   retraction: false,
   manualRet: false
 };
@@ -1202,7 +1204,19 @@ ipcMain.handle("manual", async () => {
     return { manualModeActivated: true };
   });
 });
+ipcMain.handle("heater", async () => {
+  return await safeExecute("HEATER", async () => {
+    if (!isConnected) throw new Error("Modbus not connected");
 
+    // Only write to coil if it's currently OFF
+    if (!coilState.heater) {
+      coilState.heater = true;
+      await client.writeCoil(COIL_HEATER, true);
+    }
+
+    return { heater: coilState.heater };
+  });
+});
 let clampState = false;
 ipcMain.handle("clamp", async () => {
   return await safeExecute("CLAMP", async () => {

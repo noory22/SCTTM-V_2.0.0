@@ -559,7 +559,7 @@ const ProcessMode = () => {
         heaterButtonDisabled: true
       }));
 
-      const result = await window.api.heating();
+      const result = await window.api.heater();
 
       if (result && result.success) {
         console.log('✅ Heater turned ON successfully');
@@ -584,18 +584,18 @@ const ProcessMode = () => {
   };
 
   const turnOffHeater = async () => {
-    try {
-      console.log('🔥 Turning heater OFF...');
+    // try {
+    //   console.log('🔥 Turning heater OFF...');
 
-      const result = await window.api.heating();
+      // const result = await window.api.heating();
 
       if (result && result.success) {
         console.log('✅ Heater turned OFF successfully');
         // Don't reset state here - let the temperature check handle it
       }
-    } catch (error) {
-      console.error('❌ Error turning heater OFF:', error);
-    }
+    // } catch (error) {
+    //   console.error('❌ Error turning heater OFF:', error);
+    // }
   };
 
   const closeHeatingDialog = () => {
@@ -856,7 +856,7 @@ const ProcessMode = () => {
       } else {
         result = await window.api.start();
         // Also ensure heater is on when starting fresh
-        await window.api.heating();
+        await window.api.heater();
       }
 
       console.log("Start Result:", result);
@@ -1774,7 +1774,7 @@ const ProcessMode = () => {
           </div>
         </section>
 
-        <section className={`${isXlScreen ? 'w-[400px]' : 'w-full'} flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} pb-20 xl:pb-0 min-h-0`}>
+        <section className={`${isXlScreen ? 'w-1/2' : 'w-full'} flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} pb-20 xl:pb-0 min-h-0`}>
           {isXlScreen && (
             <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 shadow-xl shadow-gray-200/50 flex-shrink-0">
               <div className="mb-2">

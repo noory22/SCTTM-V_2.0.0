@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("api", {
   stop:  () => ipcRenderer.invoke("stop"),
   reset: () => ipcRenderer.invoke("reset"),
   heating: () => ipcRenderer.invoke("heating"),
+  heater: () => ipcRenderer.invoke("heater"),
   retraction: () => ipcRenderer.invoke("retraction"),
   manual: () => ipcRenderer.invoke("manual"),
   clamp: () => ipcRenderer.invoke("clamp"),
