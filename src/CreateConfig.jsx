@@ -126,14 +126,14 @@ const CreateConfig = () => {
       newErrors.numberOfCurves = 'Please enter a valid positive integer';
     } else if (!Number.isInteger(parseFloat(formData.numberOfCurves))) {
       newErrors.numberOfCurves = 'Number of Curves must be a whole number';
-    } else if (parseInt(formData.numberOfCurves) < 1 || parseInt(formData.numberOfCurves) > 10) {
+    } else if (parseInt(formData.numberOfCurves) < 1 || parseInt(formData.numberOfCurves) > 20) {
       newErrors.numberOfCurves = 'Number of Curves must be between 1 and 10';
     }
     
     // ADDED: Validate curve distances for each curve
     const numCurves = parseInt(formData.numberOfCurves);
-    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 10) {
-      const curveLetters = 'ABCDEFGHIJ';
+    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 20) {
+      const curveLetters = 'ABCDEFGHIJKLMNOPQRST';
       
       for (let i = 0; i < numCurves; i++) {
         const curveName = curveLetters[i];
@@ -486,7 +486,7 @@ const CreateConfig = () => {
                     name="numberOfCurves"
                     value={formData.numberOfCurves}
                     onChange={handleInputChange}
-                    placeholder="Enter number of curves (1-10)"
+                    placeholder="Enter number of curves (1-20)"
                     className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                       errors.numberOfCurves 
                         ? 'border-red-300 focus:border-red-500' 
@@ -644,7 +644,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 10</span> (whole numbers only)
+                      <span className="font-semibold">Number of Curves</span> should be in range <span className="font-semibold">1 - 20</span> (whole numbers only)
                     </p>
                   </div>
                   

@@ -95,35 +95,35 @@ const Manual = () => {
     window.addEventListener('modbus-status-change', handleModbusStatusChange);
 
     // Initialize camera feed
-    const initCamera = () => {
-      setCameraLoading(true);
-      setCameraError(false);
+    // const initCamera = () => {
+    //   setCameraLoading(true);
+    //   setCameraError(false);
 
-      navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'environment'
-        },
-        audio: false
-      })
-        .then(stream => {
-          streamRef.current = stream;
+    //   navigator.mediaDevices.getUserMedia({
+    //     video: {
+    //       width: { ideal: 1280 },
+    //       height: { ideal: 720 },
+    //       facingMode: 'environment'
+    //     },
+    //     audio: false
+    //   })
+    //     .then(stream => {
+    //       streamRef.current = stream;
 
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
+    //       if (videoRef.current) {
+    //         videoRef.current.srcObject = stream;
+    //       }
 
-          setCameraLoading(false);
-        })
-        .catch(error => {
-          console.error('Camera access error:', error);
-          setCameraError(true);
-          setCameraLoading(false);
-        });
-    };
+    //       setCameraLoading(false);
+    //     })
+    //     .catch(error => {
+    //       console.error('Camera access error:', error);
+    //       setCameraError(true);
+    //       setCameraLoading(false);
+    //     });
+    // };
 
-    initCamera();
+    // initCamera();
 
     // Cleanup function
     return () => {
@@ -281,33 +281,33 @@ const Manual = () => {
       });
   };
 
-  const retryCamera = () => {
-    setCameraLoading(true);
-    setCameraError(false);
+  // const retryCamera = () => {
+  //   setCameraLoading(true);
+  //   setCameraError(false);
 
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: 'environment'
-      },
-      audio: false
-    })
-      .then(stream => {
-        streamRef.current = stream;
+  //   navigator.mediaDevices.getUserMedia({
+  //     video: {
+  //       width: { ideal: 1280 },
+  //       height: { ideal: 720 },
+  //       facingMode: 'environment'
+  //     },
+  //     audio: false
+  //   })
+  //     .then(stream => {
+  //       streamRef.current = stream;
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
+  //       if (videoRef.current) {
+  //         videoRef.current.srcObject = stream;
+  //       }
 
-        setCameraLoading(false);
-      })
-      .catch(error => {
-        console.error('Camera retry error:', error);
-        setCameraError(true);
-        setCameraLoading(false);
-      });
-  };
+  //       setCameraLoading(false);
+  //     })
+  //     .catch(error => {
+  //       console.error('Camera retry error:', error);
+  //       setCameraError(true);
+  //       setCameraLoading(false);
+  //     });
+  // };
 
   // Read PLC data periodically - REAL-TIME DATA ONLY
   useEffect(() => {
@@ -465,17 +465,17 @@ const Manual = () => {
           {/* Live Video Feed */}
           <div className="xl:col-span-2">
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-4">
+             {/* <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-white font-semibold flex items-center space-x-2">
                     <div className={`w-3 h-3 ${connectionStatus.connected ? 'bg-green-500' : 'bg-red-500'} rounded-full animate-pulse`}></div>
                     <span>Live Feed</span>
                   </h2>
                 </div>
-              </div>
+              </div>*/}
 
               {/* Video Container */}
-              <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
+             {/*} <div className="relative bg-slate-200 aspect-video flex items-center justify-center">
                 {cameraLoading ? (
                   <div className="flex flex-col items-center space-y-4">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
@@ -542,7 +542,8 @@ const Manual = () => {
                     </div>
                   </>
                 )}
-              </div>
+              // </div>
+              */}
 
               {/* Manual Distance Graph */}
               <div className="bg-white border-t border-slate-200 p-4">
@@ -730,13 +731,13 @@ const Manual = () => {
               {/* Status Messages */}
               {coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-green-500 text-center mt-2">
-                  ✅ Catheter is at home position. Homing disabled.
+                  ✅ Gripper is at home position. Homing disabled.
                 </p>
               )}
 
               {!coilLLSStatus && !controls.homing && (
                 <p className="text-xs text-amber-500 text-center mt-2">
-                  🔄 Catheter is away from home. Homing available.
+                  🔄 Gripper is away from home. Homing available.
                 </p>
               )}
 
@@ -748,7 +749,7 @@ const Manual = () => {
             </div>
 
             {/* Status Panel */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">System Status</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -788,7 +789,7 @@ const Manual = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

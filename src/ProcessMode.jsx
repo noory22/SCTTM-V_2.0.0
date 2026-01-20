@@ -34,12 +34,12 @@ const ProcessMode = () => {
   const [isHoming, setIsHoming] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [showCameraPanel, setShowCameraPanel] = useState(false);
+  // const [showCameraPanel, setShowCameraPanel] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
-  const videoRef = useRef(null);
-  const [cameraButtonPos, setCameraButtonPos] = useState({ x: window.innerWidth - 70, y: 112 });
+  // const videoRef = useRef(null);
+  // const [cameraButtonPos, setCameraButtonPos] = useState({ x: window.innerWidth - 70, y: 112 });
   const [configButtonPos, setConfigButtonPos] = useState({ x: window.innerWidth - 70, y: 168 });
-  const [isDraggingCamera, setIsDraggingCamera] = useState(false);
+  // const [isDraggingCamera, setIsDraggingCamera] = useState(false);
   const [isDraggingConfig, setIsDraggingConfig] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const startTimeRef = useRef(Date.now());
@@ -760,31 +760,31 @@ const ProcessMode = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const initCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720 }
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error('Camera access denied:', err);
-      }
-    };
+  // useEffect(() => {
+  //   const initCamera = async () => {
+  //     try {
+  //       const stream = await navigator.mediaDevices.getUserMedia({
+  //         video: { width: 1280, height: 720 }
+  //       });
+  //       if (videoRef.current) {
+  //         videoRef.current.srcObject = stream;
+  //       }
+  //     } catch (err) {
+  //       console.error('Camera access denied:', err);
+  //     }
+  //   };
 
-    initCamera();
-  }, []);
+  //   initCamera();
+  // }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (isDraggingCamera) {
-        setCameraButtonPos({
-          x: Math.max(0, Math.min(window.innerWidth - 56, e.clientX - dragOffset.x)),
-          y: Math.max(0, Math.min(window.innerHeight - 56, e.clientY - dragOffset.y))
-        });
-      }
+      // if (isDraggingCamera) {
+      //   setCameraButtonPos({
+      //     x: Math.max(0, Math.min(window.innerWidth - 56, e.clientX - dragOffset.x)),
+      //     y: Math.max(0, Math.min(window.innerHeight - 56, e.clientY - dragOffset.y))
+      //   });
+      // }
       if (isDraggingConfig) {
         setConfigButtonPos({
           x: Math.max(0, Math.min(window.innerWidth - 56, e.clientX - dragOffset.x)),
@@ -794,17 +794,17 @@ const ProcessMode = () => {
     };
 
     const handleMouseUp = () => {
-      setIsDraggingCamera(false);
+      // setIsDraggingCamera(false);
       setIsDraggingConfig(false);
     };
 
     const handleTouchMove = (e) => {
-      if (isDraggingCamera && e.touches.length > 0) {
-        setCameraButtonPos({
-          x: Math.max(0, Math.min(window.innerWidth - 56, e.touches[0].clientX - dragOffset.x)),
-          y: Math.max(0, Math.min(window.innerHeight - 56, e.touches[0].clientY - dragOffset.y))
-        });
-      }
+      // if (isDraggingCamera && e.touches.length > 0) {
+      //   setCameraButtonPos({
+      //     x: Math.max(0, Math.min(window.innerWidth - 56, e.touches[0].clientX - dragOffset.x)),
+      //     y: Math.max(0, Math.min(window.innerHeight - 56, e.touches[0].clientY - dragOffset.y))
+      //   });
+      // }
       if (isDraggingConfig && e.touches.length > 0) {
         setConfigButtonPos({
           x: Math.max(0, Math.min(window.innerWidth - 56, e.touches[0].clientX - dragOffset.x)),
@@ -814,11 +814,11 @@ const ProcessMode = () => {
     };
 
     const handleTouchEnd = () => {
-      setIsDraggingCamera(false);
+      // setIsDraggingCamera(false);
       setIsDraggingConfig(false);
     };
 
-    if (isDraggingCamera || isDraggingConfig) {
+    if (isDraggingConfig) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       window.addEventListener('touchmove', handleTouchMove);
@@ -831,7 +831,7 @@ const ProcessMode = () => {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isDraggingCamera, isDraggingConfig, dragOffset]);
+  }, [isDraggingConfig, dragOffset]);
 
 
   const handleStart = async () => {
@@ -1368,7 +1368,7 @@ const ProcessMode = () => {
         </div>
       )}
 
-      <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showCameraPanel ? 'translate-x-0' : '-translate-x-full'
+      {/* <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 left-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showCameraPanel ? 'translate-x-0' : '-translate-x-full'
         }`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
@@ -1393,7 +1393,7 @@ const ProcessMode = () => {
             />
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className={`${isXlScreen ? 'hidden' : 'fixed'} top-0 right-0 h-auto w-[90vw] max-w-sm bg-white/95 backdrop-blur-xl shadow-2xl z-40 transform transition-transform duration-300 ${showConfigPanel ? 'translate-x-0' : 'translate-x-full'
         }`}>
@@ -1529,7 +1529,7 @@ const ProcessMode = () => {
 
       {!isXlScreen && (
         <div className="fixed z-30">
-          <button
+          {/* <button
             onMouseDown={(e) => {
               setIsDraggingCamera(true);
               setDragOffset({
@@ -1562,7 +1562,7 @@ const ProcessMode = () => {
             className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-xl hover:shadow-2xl transition-all"
           >
             <Camera className="w-5 h-5" />
-          </button>
+          </button> */}
           <button
             onMouseDown={(e) => {
               setIsDraggingConfig(true);
@@ -1602,7 +1602,7 @@ const ProcessMode = () => {
 
       <main className={`relative flex ${isXlScreen ? 'flex-row' : 'flex-col'} flex-1 ${isXlScreen ? 'gap-6 p-6' : isLgScreen ? 'gap-4 p-4' : 'gap-3 p-3'} min-h-0 overflow-hidden`}>
         <section className={`flex-1 flex flex-col ${isXlScreen ? 'gap-6' : 'gap-4'} min-w-0 min-h-0`}>
-          {isXlScreen && (
+          {/* {isXlScreen && (
             <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-xl shadow-gray-200/50 flex-[0_0_40%] min-h-0">
               <div className="p-3 border-b border-gray-200/80">
                 <div className="flex items-center justify-between">
@@ -1639,7 +1639,7 @@ const ProcessMode = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           <div className="flex-1 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-xl shadow-gray-200/50 min-h-0 flex flex-col">
             <div className="mb-2 sm:mb-3 flex-shrink-0">
