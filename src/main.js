@@ -450,18 +450,13 @@ async function readLogFile(filePath) {
 
       const values = lines[i].split(',');
       if (values.length >= 3) {
-        const timeMatch = values[0].match(/T(\d{2}):(\d{2}):(\d{2})/);
-        let timeValue = i - 1; // Default to index if time parsing fails
         let force = parseFloat(values[2]) || 0;
         let distance = parseFloat(values[1]) || 0;
 
-        // Convert force from mN to N for better display
-        const forceN = force / 1000;
-
         processData.push({
-          time: timeValue,
+          time: i - 1,
           distance: distance,
-          force: forceN,
+          force: force, // Keep in mN for consistency with real-time graph
           temperature: parseFloat(values[3]) || 0
         });
       }
@@ -506,10 +501,11 @@ function extractConfigFromCsv(csvData) {
       config.retractionLength = firstDataRow[8] || '--';   // ✅ RetractionStrokelength
       config.numberOfCurves = firstDataRow[9] || '--';
 
-      // Parse curve distances
+      // Parse curve distances - CurveDistances is from index 10 onwards
       try {
-        if (firstDataRow[10]) {
-          const curveDistancesStr = firstDataRow[10].replace(/\\"/g, '"');
+        if (firstDataRow.length >= 11) {
+          // Join parts from index 10 onwards to handle JSON strings with commas
+          const curveDistancesStr = firstDataRow.slice(10).join(',').replace(/\\"/g, '"');
           config.curveDistances = JSON.parse(curveDistancesStr);
         }
       } catch (e) {
@@ -880,8 +876,8 @@ async function processModbusLoop() {
         const mdRes = await client.readHoldingRegisters(REG_MANUAL_DISTANCE, 1);
         // plcState.manualDistance = mdRes.data[0];
         plcState.manualDistance = new Int16Array(new Uint16Array([mdRes.data[0]]).buffer)[0];
-        console.log(typeof(plcState,manualDistance));
-        
+        console.log(typeof (plcState, manualDistance));
+
       } catch (e) { }
 
       plcState.lastUpdated = Date.now();
@@ -989,7 +985,7 @@ async function writeConfigurations(configs) {
       configName: config.configName || '',
       pathlength: config.pathlength || '',
       thresholdForce: config.thresholdForce || '',
-      temperature: config.temperature || '',
+      // temperature: config.temperature || '',
       retractionLength: config.retractionLength || '',
       numberOfCurves: config.numberOfCurves || '',
       curveDistances: config.curveDistances || {}
@@ -1399,18 +1395,18 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       // Parse configuration values
       const pathLength = parseInt(config.pathlength);
       const thresholdForce = parseFloat(config.thresholdForce); // mN
-      const temperature = parseFloat(config.temperature); // °C
+      // const temperature = parseFloat(config.temperature); // °C
       const retractionLength = parseFloat(config.retractionLength); // mm
 
       console.log('📊 Parsed config values:', {
         pathLength: `${pathLength} mm`,
         thresholdForce: `${thresholdForce} mN`,
-        temperature: `${temperature} °C`,
+        // temperature: `${temperature} °C`,
         retractionLength: `${retractionLength} mm`
       });
 
       // Validate values
-      if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(temperature) || isNaN(retractionLength)) {
+      if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(retractionLength)) {
         console.error('❌ Invalid configuration values');
         return false;
       }
@@ -1433,12 +1429,12 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
 
       // 3. Write Temperature
-      const temperatureValue = Math.round(temperature * 10); // 0.1°C
-      console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
-      await client.writeRegister(510, temperatureValue);
-      await delay(150);
-      console.log('✅ Temperature written to R510');
-      results.push({ register: '510 (R510)', value: temperatureValue, success: true });
+      // const temperatureValue = Math.round(temperature * 10); // 0.1°C
+      // console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
+      // await client.writeRegister(510, temperatureValue);
+      // await delay(150);
+      // console.log('✅ Temperature written to R510');
+      // results.push({ register: '510 (R510)', value: temperatureValue, success: true });
 
       // 4. Write Retraction Length
       const retractionValue = Math.round(retractionLength);

@@ -26,8 +26,8 @@ const CreateConfig = () => {
   useEffect(() => {
     const numCurves = parseInt(formData.numberOfCurves);
 
-    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 10) {
-      const curveLetters = 'ABCDEFGHIJ';
+    if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 20) {
+      const curveLetters = 'ABCDEFGHIJKLMNOPQRST';
 
       setCurveDistances(prev => {
         const updated = {};
@@ -127,7 +127,7 @@ const CreateConfig = () => {
     } else if (!Number.isInteger(parseFloat(formData.numberOfCurves))) {
       newErrors.numberOfCurves = 'Number of Curves must be a whole number';
     } else if (parseInt(formData.numberOfCurves) < 1 || parseInt(formData.numberOfCurves) > 20) {
-      newErrors.numberOfCurves = 'Number of Curves must be between 1 and 10';
+      newErrors.numberOfCurves = 'Number of Curves must be between 1 and 20';
     }
     
     // ADDED: Validate curve distances for each curve
@@ -143,7 +143,7 @@ const CreateConfig = () => {
           newErrors[`curveDistance_${curveName}`] = `Distance for Curve ${curveName} is required`;
         } else if (isNaN(distance) || parseFloat(distance) <= 0) {
           newErrors[`curveDistance_${curveName}`] = `Please enter a valid positive number for Curve ${curveName}`;
-        } else if (parseFloat(distance) < 1 || parseFloat(distance) > 1000) {
+        } else if (parseFloat(distance) < 1 || parseFloat(distance) > 2000) {
           // Assuming a reasonable range for curve distances
           newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 1mm and 1000mm`;
         }
@@ -168,7 +168,7 @@ const CreateConfig = () => {
     }
     }
     
-    if (name === 'pathlength' || name === 'thresholdForce' || name === 'temperature' || name === 'retractionLength' || name === 'numberOfCurves') {
+    if (name === 'pathlength' || name === 'thresholdForce' || name === 'retractionLength' || name === 'numberOfCurves') {
       // Prevent negative numbers, leading zeros, and scientific notation (e, E)
       if (value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
         return;
@@ -246,7 +246,7 @@ const CreateConfig = () => {
           configName: '',
           pathlength: '',
           thresholdForce: '',
-          temperature: '',
+          // temperature: '',
           retractionLength: '',
           numberOfCurves: ''
         });
@@ -271,11 +271,11 @@ const CreateConfig = () => {
   // ADDED: Generate curve letters based on number of curves
   const generateCurveLetters = () => {
     const numCurves = parseInt(formData.numberOfCurves);
-    if (isNaN(numCurves) || numCurves < 1 || numCurves > 10) {
+    if (isNaN(numCurves) || numCurves < 1 || numCurves > 20) {
       return [];
     }
     
-    const curveLetters = 'ABCDEFGHIJ';
+    const curveLetters = 'ABCDEFGHIJKLMNOPQRST';
     return curveLetters.slice(0, numCurves).split('');
   };
 

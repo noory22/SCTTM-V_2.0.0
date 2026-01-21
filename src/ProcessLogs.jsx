@@ -40,7 +40,8 @@ const ProcessLogs = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [graphData, setGraphData] = useState([]);
+  const [forwardData, setForwardData] = useState([]);
+  const [backwardData, setBackwardData] = useState([]);
 
   useEffect(() => {
     loadLogFiles();
@@ -59,6 +60,57 @@ const ProcessLogs = () => {
     }
   };
 
+  const extractFullMotionData = (rawData, maxDistanceStr) => {
+    if (!rawData || rawData.length === 0) return { forwardData: [], backwardData: [] };
+
+    // Use provided maxDistance or default to finding the peak
+    let maxDistance;
+    if (maxDistanceStr && maxDistanceStr !== "--") {
+      maxDistance = parseFloat(maxDistanceStr);
+    } else {
+      // Find the maximum distance in the data
+      maxDistance = Math.max(...rawData.map(d => parseFloat(d.distance)));
+    }
+
+    // Sort by time order (assuming rawData is already in sequence)
+    const sorted = [...rawData];
+    let forward = [];
+    let backward = [];
+    let reachedMax = false;
+    let lastDistance = -1;
+
+    for (let i = 0; i < sorted.length; i++) {
+      const d = parseFloat(sorted[i].distance);
+
+      if (!reachedMax) {
+        forward.push({
+          ...sorted[i],
+          distance: d,
+          force: parseFloat(sorted[i].force)
+        });
+        // Check if we've reached near the maximum distance
+        if (d >= maxDistance - 0.5) { // Small tolerance
+          reachedMax = true;
+        }
+      } else {
+        // Now in retraction phase
+        if (d <= lastDistance) {
+          backward.push({
+            ...sorted[i],
+            distance: d,
+            force: parseFloat(sorted[i].force)
+          });
+        }
+      }
+      lastDistance = d;
+    }
+
+    console.log("Forward count:", forward.length);
+    console.log("Backward count:", backward.length);
+    console.log("Max distance:", maxDistance);
+    return { forwardData: forward, backwardData: backward };
+  };
+
   const handleLogSelection = async (log) => {
     try {
       setIsLoading(true);
@@ -69,45 +121,18 @@ const ProcessLogs = () => {
       if (result.success) {
         // Use the config data from CSV
         const configData = result.configData;
-        // ----------------------------------
-        let prevDistance = null;
-        let phase = "insertion";
-        const processedData = result.data.map((point, index) => {
-          const d = Number(point.distance);
-          const f = Number(point.force);
+        const pathLength = configData.pathlength || configData.pathLength;
 
-          // Detect first true decrease -> switch permanently to retraction
-          if (prevDistance !== null && phase === "insertion") {
-            // treat equal distance as same phase (plateau), only strict decrease switches
-            if (d < prevDistance) phase = "retraction";
-          }
-          prevDistance = d;
+        // Extract forward and backward motion data
+        const { forwardData, backwardData } = extractFullMotionData(result.data, pathLength);
 
-          return {
-            ...point,
-            time: index,
+        setForwardData(forwardData);
+        setBackwardData(backwardData);
 
-            // ✅ X axis remains distance
-            distance: d,
-
-            // ✅ Y axis remains force
-            // Split FORCE into two series so we can color phases
-            forceInsertion: phase === "insertion" ? f : null,
-            forceRetraction: phase === "retraction" ? f : null,
-          };
-        });
-        // Process graph data
-        // const processedData = result.data.map((point, index) => ({
-        //   ...point,
-        //   time: index,
-        //   forceN: point.force,
-        //   distanceMm: point.distance
-        // }));
-
-        setGraphData(processedData);
         setSelectedLog({
           ...log,
-          processData: processedData,
+          forwardData,
+          backwardData,
           configData: configData,
           rawData: result.rawData,
         });
@@ -142,7 +167,8 @@ const ProcessLogs = () => {
         // Reset selection if deleted log was selected
         if (selectedLog && selectedLog.filename === targetLog.filename) {
           setSelectedLog(null);
-          setGraphData([]);
+          setForwardData([]);
+          setBackwardData([]);
         }
 
         setShowDeleteConfirm(false);
@@ -176,7 +202,8 @@ const ProcessLogs = () => {
 
       setLogFiles([]);
       setSelectedLog(null);
-      setGraphData([]);
+      setForwardData([]);
+      setBackwardData([]);
       setShowDeleteAllConfirm(false);
       setShowSuccessMessage(true);
 
@@ -199,31 +226,6 @@ const ProcessLogs = () => {
       day: "numeric",
     });
   };
-
-  // const formatTime = (dateStr, timeStr) => {
-  //   try {
-  //     if (!dateStr || !timeStr) return '--';
-
-  //     // Parse date string like "Jan 2, 2026"
-  //     const baseDate = new Date(dateStr);
-  //     console.log(baseDate);
-
-  //     if (isNaN(baseDate.getTime())) return '--';
-
-  //     // Parse time "HH-MM-SS"
-  //     const [hours, minutes, seconds] = timeStr.split('-').map(Number);
-
-  //     baseDate.setHours(hours, minutes, seconds || 0);
-
-  //     return baseDate.toLocaleTimeString(undefined, {
-  //       hour: '2-digit',
-  //       minute: '2-digit',
-  //       second: '2-digit'
-  //     });
-  //   } catch {
-  //     return '--';
-  //   }
-  // };
 
   const formatTime = (dateStr, timeStr) => {
     try {
@@ -249,20 +251,6 @@ const ProcessLogs = () => {
     }
   };
 
-  // const formatTime = (timeStr) => {
-  //   try {
-  //     // Convert ISO timestamp to readable time
-  //     const date = new Date(timeStr.replace(/-/g, ':'));
-  //     return date.toLocaleTimeString('en-US', {
-  //       hour: '2-digit',
-  //       minute: '2-digit',
-  //       second: '2-digit'
-  //     });
-  //   } catch (e) {
-  //     return timeStr;
-  //   }
-  // };
-
   const renderCurveReferenceLines = () => {
     if (!selectedLog?.configData?.curveDistances) return null;
 
@@ -283,6 +271,11 @@ const ProcessLogs = () => {
         }}
       />
     ));
+  };
+
+  // Combine all data for statistics
+  const getAllData = () => {
+    return [...forwardData, ...backwardData];
   };
 
   return (
@@ -378,7 +371,6 @@ const ProcessLogs = () => {
                               </div>
                               <div className="flex items-center space-x-1">
                                 <Clock className="w-3 h-3" />
-                                {/* <span>{formatTime(log.time)}</span> */}
                                 <span>{formatTime(log.date, log.time)}</span>
                               </div>
                             </div>
@@ -409,7 +401,6 @@ const ProcessLogs = () => {
                     </div>
                     <div className="flex items-center space-x-1">
                       <Clock className="w-3 h-3" />
-                      {/* <span>{formatTime(selectedLog.time)}</span> */}
                       <span>
                         {formatTime(selectedLog.date, selectedLog.time)}
                       </span>
@@ -452,7 +443,7 @@ const ProcessLogs = () => {
                         </p>
                       </div>
                       <p className="text-green-700 font-bold">
-                        {selectedLog.configData.pathlength || "--"} mm
+                        {selectedLog.configData.pathlength || selectedLog.configData.pathLength || "--"} mm
                       </p>
                     </div>
 
@@ -470,7 +461,7 @@ const ProcessLogs = () => {
                     </div>
 
                     {/* Temperature */}
-                    <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-3 border border-orange-200">
+                    {/*<div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-3 border border-orange-200">
                       <div className="flex items-center space-x-2 mb-1">
                         <Thermometer className="w-4 h-4 text-orange-600" />
                         <p className="text-slate-600 text-xs font-medium">
@@ -480,7 +471,7 @@ const ProcessLogs = () => {
                       <p className="text-orange-700 font-bold">
                         {selectedLog.configData.temperature || "--"} °C
                       </p>
-                    </div>
+                    </div> */}
 
                     {/* Retraction Length */}
                     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-200">
@@ -515,7 +506,7 @@ const ProcessLogs = () => {
                   {/* Curve Distances */}
                   {selectedLog.configData.curveDistances &&
                     Object.keys(selectedLog.configData.curveDistances).length >
-                      0 && (
+                    0 && (
                       <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-4 border border-red-200">
                         <div className="flex items-center space-x-2 mb-3">
                           <TrendingUp className="w-4 h-4 text-red-600" />
@@ -594,14 +585,14 @@ const ProcessLogs = () => {
                     <h2 className="text-xl font-semibold text-slate-800">
                       Force vs Distance Analysis
                     </h2>
-                    <p className="text-slate-600 text-sm">
-                      Recorded during process execution
-                    </p>
+                    {/* <p className="text-slate-600 text-sm">
+                      Insertion (0 → Max) and Retraction (Max → 0)
+                    </p> */}
                   </div>
                 </div>
                 {selectedLog && (
                   <div className="text-sm text-slate-500">
-                    Total data points: {graphData.length}
+                    {/* Forward: {forwardData.length} pts | Backward: {backwardData.length} pts */}
                   </div>
                 )}
               </div>
@@ -610,12 +601,13 @@ const ProcessLogs = () => {
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={graphData}
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis
                         dataKey="distance"
+                        type="number"
+                        domain={[0, 'dataMax']}
                         stroke="#64748b"
                         label={{
                           value: "Distance (mm)",
@@ -627,7 +619,7 @@ const ProcessLogs = () => {
                       <YAxis
                         stroke="#64748b"
                         label={{
-                          value: "Force (N)",
+                          value: "Force (mN)",
                           angle: -90,
                           position: "insideLeft",
                           style: { fill: "#64748b", fontWeight: "bold" },
@@ -641,47 +633,45 @@ const ProcessLogs = () => {
                           boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                           padding: "12px",
                         }}
-                        formatter={(value, name) => {
-                          if (name === "force") {
-                            return [`${value.toFixed(3)} mN`, "Force"];
-                          } else if (name === "distance") {
-                            return [`${value} mm`, "Distance"];
-                          }
-                          return [value, name];
-                        }}
+                        formatter={(value) => [`${value.toFixed(3)} mN`, "Force"]}
                         labelFormatter={(label) => `Distance: ${label} mm`}
                       />
+                      {/* <Legend
+                        align="right"
+                        verticalAlign="top"
+                        layout="horizontal"
+                        wrapperStyle={{
+                          paddingTop: "10px",
+                          paddingRight: "10px"
+                        }}
+                      /> */}
 
                       {renderCurveReferenceLines()}
-                      {/* <Line 
-                        type="monotone" 
-                        dataKey="force" 
-                        stroke="#3b82f6" 
+
+                      {/* Insertion (Forward Motion) - Blue */}
+                      <Line
+                        data={forwardData}
+                        type="monotone"
+                        dataKey="force"
+                        stroke="#3b82f6"
                         strokeWidth={3}
                         dot={false}
                         activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
-                        name="Force (N)"
-                      /> */}
-                      {/* Force during insertion (green) */}
-                      <Line
-                        type="linear"
-                        dataKey="forceInsertion"
-                        stroke="#22c55e"
-                        strokeWidth={3}
-                        dot={false}
+                        name="Insertion"
                         isAnimationActive={false}
-                        name="Force (Insertion)"
                       />
 
-                      {/* Force during retraction (red) */}
+                      {/* Retraction (Backward Motion) - Red */}
                       <Line
-                        type="linear"
-                        dataKey="forceRetraction"
+                        data={backwardData}
+                        type="monotone"
+                        dataKey="force"
                         stroke="#ef4444"
                         strokeWidth={3}
                         dot={false}
+                        activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
+                        name="Retraction"
                         isAnimationActive={false}
-                        name="Force (Retraction)"
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -701,103 +691,52 @@ const ProcessLogs = () => {
               )}
 
               {/* Graph Statistics */}
-              {/* {selectedLog && graphData.length > 0 && (
+              {/*  {selectedLog && (forwardData.length > 0 || backwardData.length > 0) && (
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
                     <p className="text-blue-700 text-sm font-medium mb-1">
-                      Max Force
+                      Insertion Points
                     </p>
                     <p className="text-blue-800 font-bold text-lg">
-                      {Math.max(...graphData.map((d) => d.force)).toFixed(3)} mN
+                      {forwardData.length}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
+                    <p className="text-red-700 text-sm font-medium mb-1">
+                      Retraction Points
+                    </p>
+                    <p className="text-red-800 font-bold text-lg">
+                      {backwardData.length}
                     </p>
                   </div>
                   <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
                     <p className="text-green-700 text-sm font-medium mb-1">
-                      Max Distance
+                      Max Force
                     </p>
                     <p className="text-green-800 font-bold text-lg">
-                      {Math.max(...graphData.map((d) => d.distance)).toFixed(1)}{" "}
-                      mm
+                      {Math.max(
+                        ...forwardData.map(d => d.force || 0),
+                        ...backwardData.map(d => d.force || 0)
+                      ).toFixed(3)} mN
                     </p>
                   </div>
                   <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
                     <p className="text-purple-700 text-sm font-medium mb-1">
-                      Data Points
+                      Max Distance
                     </p>
                     <p className="text-purple-800 font-bold text-lg">
-                      {graphData.length}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-amber-700 text-sm font-medium mb-1">
-                      Avg Force
-                    </p>
-                    <p className="text-amber-800 font-bold text-lg">
-                      {(
-                        graphData.reduce((sum, d) => sum + d.force, 0) /
-                        graphData.length
-                      ).toFixed(3)}{" "}
-                      mN
+                      {Math.max(
+                        ...forwardData.map(d => d.distance || 0),
+                        ...backwardData.map(d => d.distance || 0)
+                      ).toFixed(1)} mm
                     </p>
                   </div>
                 </div>
               )} */}
             </div>
 
-            {/* Raw Data Preview
-            {selectedLog && (
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                  Sample Data Preview
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50">
-                        <th className="p-3 text-left text-slate-700 font-medium">
-                          Time Index
-                        </th>
-                        <th className="p-3 text-left text-slate-700 font-medium">
-                          Distance (mm)
-                        </th>
-                        <th className="p-3 text-left text-slate-700 font-medium">
-                          Force (mN)
-                        </th>
-                        <th className="p-3 text-left text-slate-700 font-medium">
-                          Temperature (°C)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {graphData.slice(0, 5).map((row, index) => (
-                        <tr
-                          key={index}
-                          className="border-b border-slate-100 hover:bg-slate-50"
-                        >
-                          <td className="p-3 text-slate-600">{row.time}</td>
-                          <td className="p-3 text-blue-600 font-medium">
-                            {row.distance.toFixed(1)}
-                          </td>
-                          <td className="p-3 text-green-600 font-medium">
-                            {row.force.toFixed(3)}
-                          </td>
-                          <td className="p-3 text-orange-600 font-medium">
-                            {row.temperature
-                              ? row.temperature.toFixed(1)
-                              : "--"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {graphData.length > 5 && (
-                  <p className="text-slate-500 text-sm mt-3 text-center">
-                    Showing first 5 of {graphData.length} data points
-                  </p>
-                )}
-              </div>
-            )} */}
+            {/* Raw Data Preview */}
+
           </div>
         </div>
       </div>
@@ -977,6 +916,28 @@ const ProcessLogs = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
+                      The graph shows <span className="font-semibold">Force vs Distance</span> with two distinct phases:
+                    </p>
+                  </div>
+
+                  <div className="ml-4 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">
+                        <span className="font-semibold">Insertion (Blue):</span> 0 → Maximum Distance
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <p className="text-blue-800 text-sm lg:text-base">
+                        <span className="font-semibold">Retraction (Red):</span> Maximum Distance → 0
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
                       Each log contains complete test data including{" "}
                       <span className="font-semibold">
                         force, distance, temperature, and configuration details
@@ -985,23 +946,13 @@ const ProcessLogs = () => {
                     </p>
                   </div>
 
-                  {/* <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <p className="text-blue-800 text-sm lg:text-base">
-                      The graph shows{" "}
-                      <span className="font-semibold">Force vs Distance</span>{" "}
-                      with curve markers indicating where each curve occurred
-                      during the test.
-                    </p>
-                  </div> */}
-
-                  {/* <div className="flex items-start space-x-3">
+                  <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
                       Configuration details shown are exactly what was used
                       during the test, including curve distances if configured.
                     </p>
-                  </div> */}
+                  </div>
 
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
