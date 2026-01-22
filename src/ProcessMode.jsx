@@ -48,6 +48,7 @@ const ProcessMode = () => {
   const [isRetractionActive, setIsRetractionActive] = useState(false);
   const [isRetractionPaused, setIsRetractionPaused] = useState(false);
   const [isRetractionCompleted, setIsRetractionCompleted] = useState(false);
+  const [showForceLimitAlert, setShowForceLimitAlert] = useState(false);
 
   // Temperature check state
   const [temperatureStatus, setTemperatureStatus] = useState({
@@ -195,6 +196,9 @@ const ProcessMode = () => {
               } else {
                 setSensorData(prev => ({ ...prev, status: 'PAUSED' }));
               }
+
+              // Show Force Limit Alert
+              setShowForceLimitAlert(true);
             }
           }
           // ---------------------------------------------------------------------------
@@ -1015,7 +1019,60 @@ const ProcessMode = () => {
 
   return (
     <div className="min-h-screen h-screen bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 overflow-hidden flex flex-col">
-      {/* Heating Dialog */}
+      {/* Force Limit Alert Modal */}
+      {showForceLimitAlert && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-red-200 overflow-hidden transform animate-in fade-in zoom-in duration-300">
+            <div className="bg-gradient-to-r from-red-600 to-rose-700 p-6 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-3">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold tracking-tight">Safety Alert</h2>
+              </div>
+              <button
+                onClick={() => setShowForceLimitAlert(false)}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Gauge className="w-10 h-10 text-red-600" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Force Limit Reached</h3>
+              <p className="text-gray-600 font-medium">
+                The real-time force has reached the user-defined threshold. The process has been paused for safety.
+              </p>
+
+              <div className="mt-8 bg-gray-50 rounded-2xl p-4 border border-gray-100 flex justify-around">
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Current Force</p>
+                  <p className="text-xl font-bold text-red-600">{readData.forceDisplay}</p>
+                </div>
+                <div className="w-px bg-gray-200 h-10 self-center"></div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-1">Threshold</p>
+                  <p className="text-xl font-bold text-gray-700">{selectedConfig?.thresholdForce} mN</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 border-t border-gray-100">
+              <button
+                onClick={() => setShowForceLimitAlert(false)}
+                className="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 shadow-lg shadow-red-200 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Close and Acknowledge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {temperatureStatus.showHeatingDialog && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200/80">

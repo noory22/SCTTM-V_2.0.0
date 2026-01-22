@@ -493,19 +493,26 @@ function extractConfigFromCsv(csvData) {
     const firstDataRow = lines[1].split(',');
 
     // Ensure row has enough columns
-    if (firstDataRow.length >= 11) {
+    if (firstDataRow.length >= 10) {
       config.configName = firstDataRow[4] || 'Unknown';
       config.pathlength = firstDataRow[5] || '--';
       config.thresholdForce = firstDataRow[6] || '--';
-      // config.temperature = firstDataRow[7] || '--';   // ✅ BathTemperature
-      config.retractionLength = firstDataRow[8] || '--';   // ✅ RetractionStrokelength
-      config.numberOfCurves = firstDataRow[9] || '--';
+      config.retractionLength = firstDataRow[7] || '--';
+      config.numberOfCurves = firstDataRow[8] || '--';
 
-      // Parse curve distances - CurveDistances is from index 10 onwards
+      // Parse curve distances - CurveDistances is from index 9 onwards
       try {
-        if (firstDataRow.length >= 11) {
-          // Join parts from index 10 onwards to handle JSON strings with commas
-          const curveDistancesStr = firstDataRow.slice(10).join(',').replace(/\\"/g, '"');
+        if (firstDataRow.length >= 10) {
+          // Join parts from index 9 onwards to handle JSON strings with commas
+          let curveDistancesStr = firstDataRow.slice(9).join(',').trim();
+
+          // Handle potential issues with surrounding quotes or escapes
+          if (curveDistancesStr.startsWith('"') && curveDistancesStr.endsWith('"')) {
+            curveDistancesStr = curveDistancesStr.slice(1, -1);
+          }
+
+          curveDistancesStr = curveDistancesStr.replace(/""/g, '"').replace(/\\"/g, '"');
+
           config.curveDistances = JSON.parse(curveDistancesStr);
         }
       } catch (e) {
