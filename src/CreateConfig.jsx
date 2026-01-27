@@ -46,14 +46,31 @@ const CreateConfig = () => {
 
   // ADDED: Handler for curve distance input changes
   const handleCurveDistanceChange = (curveName, value) => {
-    // Validate: only allow numbers and a single decimal point
-    if (!/^\d*\.?\d*$/.test(value) || value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
+    // Validate: only allow digits (no decimal point)
+    if (!/^\d*$/.test(value) || value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
       return;
     }
     
-    // Prevent multiple decimal points
-    if ((value.match(/\./g) || []).length > 1) {
-      return;
+    // Prevent values greater than path length
+    const pathLength = parseInt(formData.pathlength);
+    if (!isNaN(pathLength) && value && parseInt(value) > pathLength) {
+      return; // Don't update if value exceeds path length
+    }
+    
+    // Check for duplicates with other curve distances
+    if (value) {
+      const newValue = parseInt(value);
+      const otherCurveDistances = { ...curveDistances };
+      delete otherCurveDistances[curveName]; // Remove current curve for comparison
+      
+      const hasDuplicate = Object.values(otherCurveDistances).some(
+        distance => distance && parseInt(distance) === newValue
+      );
+      
+      if (hasDuplicate) {
+        // You can optionally prevent setting duplicate values
+        // return; // Uncomment to prevent duplicates in real-time
+      }
     }
     
     setCurveDistances(prev => ({
@@ -69,10 +86,20 @@ const CreateConfig = () => {
         return newErrors;
       });
     }
+    
+    // Clear curve order error if it exists
+    if (errors.curveOrder) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.curveOrder;
+        return newErrors;
+      });
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
+    const pathLength = parseFloat(formData.pathlength);
     
     // Validate Configuration Name (alphabets only)
     if (!formData.configName.trim()) {
@@ -134,6 +161,7 @@ const CreateConfig = () => {
     const numCurves = parseInt(formData.numberOfCurves);
     if (!isNaN(numCurves) && numCurves > 0 && numCurves <= 20) {
       const curveLetters = 'ABCDEFGHIJKLMNOPQRST';
+      const curveDistanceValues = []; 
       
       for (let i = 0; i < numCurves; i++) {
         const curveName = curveLetters[i];
@@ -143,9 +171,17 @@ const CreateConfig = () => {
           newErrors[`curveDistance_${curveName}`] = `Distance for Curve ${curveName} is required`;
         } else if (isNaN(distance) || parseFloat(distance) <= 0) {
           newErrors[`curveDistance_${curveName}`] = `Please enter a valid positive number for Curve ${curveName}`;
-        } else if (parseFloat(distance) < 1 || parseFloat(distance) > 2000) {
-          // Assuming a reasonable range for curve distances
-          newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 1mm and 2000mm`;
+        } else if (parseFloat(distance) < 0 || parseFloat(distance) > pathLength) {
+          // Dynamic range based on path length
+          newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance must be between 0mm and ${pathLength}mm`;
+        } else {
+          //Check for duplicates
+          const distanceValue = parseInt(distance);
+          if (curveDistanceValues.includes(distanceValue)){
+            newErrors[`curveDistance_${curveName}`] = `Curve ${curveName} distance (${distanceValue}mm) is already used for another curve`;
+          } else{
+            curveDistanceValues.push(distanceValue);
+          }
         }
       }
     }
@@ -175,7 +211,7 @@ const CreateConfig = () => {
       }
       
       // Allow only numbers and single decimal point (for numberOfCurves, we'll handle integer-only separately)
-      if (!/^\d*\.?\d*$/.test(value)) {
+      if (!/^\d*$/.test(value)) {
         return;
       }
       
@@ -525,7 +561,7 @@ const CreateConfig = () => {
                           name={`curveDistance_${curveName}`}
                           value={curveDistances[curveName] || ''}
                           onChange={(e) => handleCurveDistanceChange(curveName, e.target.value)}
-                          placeholder={`Enter distance for Curve ${curveName}`}
+                          placeholder={`Enter distance (0-${formData.pathlength || 'path length'})`}
                           className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                             errors[`curveDistance_${curveName}`] 
                               ? 'border-red-300 focus:border-red-500' 
@@ -648,13 +684,18 @@ const CreateConfig = () => {
                     </p>
                   </div>
                   
-                  {/* ADDED: Help modal entry for Curve Distances
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      <span className="font-semibold">Curve Distances</span> are required for each curve position (A, B, C, etc.) and should be between <span className="font-semibold">1mm and 1000mm</span>
+                      <span className="font-semibold">Curve Distances</span> must be between <span className="font-semibold">0mm and the Rig Path Length</span> (e.g., if Path Length is 500mm, curves must be 0-500mm)
                     </p>
-                  </div> */}
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Curve Distances</span> must be unique values between <span className="font-semibold">0mm and the Rig Path Length</span> (no duplicate values allowed)
+                    </p>
+                  </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
