@@ -8,7 +8,7 @@ const CreateConfig = () => {
     configName: '',
     pathlength: '',
     thresholdForce: '',
-    // temperature: '',
+    insertionLength: '',
     retractionLength: '', 
     numberOfCurves: '' 
   });
@@ -128,14 +128,13 @@ const CreateConfig = () => {
       newErrors.thresholdForce = 'Threshold Force must be between 10mN and 10000mN';
     }
 
-    // Validate Temperature (numeric and range)
-    // if (!formData.temperature.trim()) {
-    //   newErrors.temperature = 'Temperature is required';
-    // } else if (isNaN(formData.temperature) || parseFloat(formData.temperature) <= 0) {
-    //   newErrors.temperature = 'Please enter a valid positive number';
-    // } else if (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 45) {
-    //   newErrors.temperature = 'Temperature must be between 35°C and 45°C';
-    // }
+    if (!formData.insertionLength.trim()) {
+      newErrors.insertionLength = 'Insertion Stroke Length is required';
+    } else if (isNaN(formData.insertionLength) || parseFloat(formData.insertionLength) <= 0) {
+      newErrors.insertionLength = 'Please enter a valid positive number';
+    } else if (parseFloat(formData.insertionLength) < 0 || parseFloat(formData.insertionLength) > 60) {
+      newErrors.insertionLength = 'Insertion Stroke Length must be between 0mm and 60mm';
+    } 
     
     // Validate Retraction Stroke Length (numeric and range)
     if (!formData.retractionLength.trim()) {
@@ -204,7 +203,7 @@ const CreateConfig = () => {
     }
     }
     
-    if (name === 'pathlength' || name === 'thresholdForce' || name === 'retractionLength' || name === 'numberOfCurves') {
+    if (name === 'pathlength' || name === 'thresholdForce'|| name === 'insertionLength' || name === 'retractionLength' || name === 'numberOfCurves') {
       // Prevent negative numbers, leading zeros, and scientific notation (e, E)
       if (value.startsWith('-') || value.startsWith('0') || /[eE]/.test(value)) {
         return;
@@ -282,7 +281,7 @@ const CreateConfig = () => {
           configName: '',
           pathlength: '',
           thresholdForce: '',
-          // temperature: '',
+          insertionLength: '',
           retractionLength: '',
           numberOfCurves: ''
         });
@@ -459,32 +458,56 @@ const CreateConfig = () => {
                 )}
               </div>
 
-              {/* Temperature */}
+              {/* Insertion Stroke Length */}
                 {/* <div className="space-y-2">
-                  <label htmlFor="temperature" className="block text-sm font-semibold text-slate-700">
-                    Bath Temperature (°C)
+                  <label htmlFor="Insertionstrokelength" className="block text-sm font-semibold text-slate-700">
+                    Insertion Stroke Length (mm)
                   </label>
                   <input
                     type="text"
-                    id="temperature"
-                    name="temperature"
-                    value={formData.temperature}
+                    id="InsStroke"
+                    name="InsStroke"
+                    value={formData.InsStroke}
                     onChange={handleInputChange}
-                    placeholder="Enter temperature in range 35°C - 45°C "
-                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                      errors.temperature 
+                    placeholder="Enter Insertion stroke length in range 0 mm - 60 mm "
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400${
+                      errors.InsStroke 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-slate-200 focus:border-blue-500'
                     }`}
                   />
-                  {errors.temperature && (
+                  {errors.InsStroke && (
                     <p className="text-red-500 text-sm flex items-center space-x-1">
                       <AlertCircle className="w-4 h-4" />
-                      <span>{errors.temperature}</span>
+                      <span>{errors.InsStroke}</span>
                     </p>
                   )}
                 </div> */}
-
+                <div className="space-y-2">
+                  <label htmlFor="InsertionLength" className="block text-sm font-semibold text-slate-700">
+                    Insertion Stroke Length (mm)
+                  </label>
+                  <input
+                    type="text"
+                    id="insertionLength"
+                    name="insertionLength"
+                    value={formData.insertionLength}
+                    onChange={handleInputChange}
+                    placeholder="Enter Insertion length in range 0mm - 60mm"
+                    className={`w-full px-4 py-3 border-2 rounded-xl transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 ${
+                      errors.insertionLength 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-slate-200 focus:border-blue-500'
+                    }`}
+                  />
+                  {errors.insertionLength && (
+                    <p className="text-red-500 text-sm flex items-center space-x-1">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{errors.insertionLength}</span>
+                    </p>
+                  )}
+                </div>
+               
                 {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">
                   <label htmlFor="retractionLength" className="block text-sm font-semibold text-slate-700">
@@ -645,7 +668,7 @@ const CreateConfig = () => {
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                     <p className="text-blue-800 text-sm lg:text-base">
-                      The values of Path Length, Threshold Force,Retraction Stroke Length, and Number of Curves required and must be positive numbers
+                      The values of Path Length, Threshold Force,Insertion Stroke Length, Retraction Stroke Length, and Number of Curves required and must be positive numbers
                     </p>
                   </div>
                   
@@ -669,6 +692,12 @@ const CreateConfig = () => {
                       <span className="font-semibold">Bath Temperature</span> should be in range  <span className="font-semibold">37°C - 45°C </span> 
                     </p>
                   </div> */}
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <p className="text-blue-800 text-sm lg:text-base">
+                      <span className="font-semibold">Insertion Stroke Length</span> should be in range <span className="font-semibold">0mm - 60mm</span>
+                    </p>
+                  </div>
                   
                   <div className="flex items-start space-x-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>

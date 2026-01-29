@@ -1412,6 +1412,10 @@ const ProcessMode = () => {
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.temperature}°C</p>
                 </div>*/}
                 <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                  <p className="text-gray-600 text-xs mb-1">Insertion Stroke Length</p>
+                  <p className="text-sm font-bold text-orange-700">{selectedConfig.insertionLength} mm</p>
+                </div>
+                <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                   <p className="text-gray-600 text-xs mb-1">Retraction Stroke Length</p>
                   <p className="text-sm font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>
                 </div>
@@ -1788,6 +1792,10 @@ const ProcessMode = () => {
                       <p className="text-gray-600 text-xs mb-0.5">Temperature</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.temperature}°C</p>
                     </div>*/}
+                    <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
+                      <p className="text-gray-600 text-xs mb-0.5">Insertion Stroke Length</p>
+                      <p className="text-base font-bold text-orange-700">{selectedConfig.insertionLength} mm</p>
+                    </div>
                     <div className="col-span-2 bg-gradient-to-br from-orange-50 to-red-50 p-3 rounded-xl border border-orange-200/50">
                       <p className="text-gray-600 text-xs mb-0.5">Retraction Stroke Length</p>
                       <p className="text-base font-bold text-orange-700">{selectedConfig.retractionLength} mm</p>

@@ -267,7 +267,7 @@ async function startCSVLogging(config) {
 
     // CSV HEADER
     csvStream.write(
-      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
+      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,InsertionStrokeLength,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
     );
 
     return { success: true, filePath: csvFilePath };
@@ -291,7 +291,7 @@ async function appendCSVData(data, config) {
       config.configName,
       config.pathlength,
       config.thresholdForce,
-      // config.temperature,
+      config.insertionLength,
       config.retractionLength,
       config.numberOfCurves,
       JSON.stringify(config.curveDistances || {})
@@ -483,7 +483,7 @@ function extractConfigFromCsv(csvData) {
     configName: 'Unknown',
     pathlength: '--',
     thresholdForce: '--',
-    // temperature: '--',        // BathTemperature
+    insertionLength: '--',        // Insertion stroke length
     retractionLength: '--',   // RetractionStrokelength
     numberOfCurves: '--',
     curveDistances: {}
@@ -498,8 +498,9 @@ function extractConfigFromCsv(csvData) {
       config.configName = firstDataRow[4] || 'Unknown';
       config.pathlength = firstDataRow[5] || '--';
       config.thresholdForce = firstDataRow[6] || '--';
-      config.retractionLength = firstDataRow[7] || '--';
-      config.numberOfCurves = firstDataRow[8] || '--';
+      config.insertionLength = firstDataRow[7] || '--';
+      config.retractionLength = firstDataRow[8] || '--';
+      config.numberOfCurves = firstDataRow[9] || '--';
 
       // Parse curve distances - CurveDistances is from index 9 onwards
       try {
@@ -1042,7 +1043,7 @@ async function writeConfigurations(configs) {
       configName: config.configName || '',
       pathlength: config.pathlength || '',
       thresholdForce: config.thresholdForce || '',
-      // temperature: config.temperature || '',
+      insertionLength: config.insertionLength || '',
       retractionLength: config.retractionLength || '',
       numberOfCurves: config.numberOfCurves || '',
       curveDistances: config.curveDistances || {}
@@ -1452,13 +1453,13 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       // Parse configuration values
       const pathLength = parseInt(config.pathlength);
       const thresholdForce = parseFloat(config.thresholdForce); // mN
-      // const temperature = parseFloat(config.temperature); // °C
+      const insertionLength = parseFloat(config.insertionLength); // mm
       const retractionLength = parseFloat(config.retractionLength); // mm
 
       console.log('📊 Parsed config values:', {
         pathLength: `${pathLength} mm`,
         thresholdForce: `${thresholdForce} mN`,
-        // temperature: `${temperature} °C`,
+        insertionLength: `${insertionLength} mm`,
         retractionLength: `${retractionLength} mm`
       });
 
@@ -1486,12 +1487,12 @@ ipcMain.handle("send-process-mode", async (event, config) => {
       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
 
       // 3. Write Temperature
-      // const temperatureValue = Math.round(temperature * 10); // 0.1°C
-      // console.log(`📝 Writing Temperature: ${temperatureValue} to R510`);
-      // await client.writeRegister(510, temperatureValue);
-      // await delay(150);
-      // console.log('✅ Temperature written to R510');
-      // results.push({ register: '510 (R510)', value: temperatureValue, success: true });
+      const insertionValue = Math.round(insertionLength); // 0.1°C
+      console.log(`📝 Writing Insertion Length: ${insertionValue} to 6050`);
+      await client.writeRegister(6050, insertionValue);
+      await delay(150);
+      console.log('✅ Insertion length written to 6050');
+      results.push({ register: '6050 (D50)', value: insertionValue, success: true });
 
       // 4. Write Retraction Length
       const retractionValue = Math.round(retractionLength);

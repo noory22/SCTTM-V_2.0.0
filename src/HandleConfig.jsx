@@ -46,7 +46,7 @@ const HandleConfig = ({ mode = 'load' }) => {
       const success = await window.api.sendProcessMode({
         pathlength: selectedConfig.pathlength,
         thresholdForce: selectedConfig.thresholdForce,
-        // temperature: selectedConfig.temperature,
+        insertionLength: selectedConfig.insertionLength,
         retractionLength: selectedConfig.retractionLength
       });
 
@@ -230,7 +230,7 @@ const HandleConfig = ({ mode = 'load' }) => {
                           <div>
                             <p className="font-medium text-slate-800">{config.configName}</p>
                             <p className="text-sm text-slate-500 mt-1">
-                              {config.pathlength}mm, {config.temperature}°C, {config.thresholdForce}mN
+                              {config.pathlength}mm, {config.insertionLength}mm, {config.thresholdForce}mN
                               {config.retractionLength && `, ${config.retractionLength}mm (retraction)`}
                             </p>
                           </div>
@@ -309,6 +309,18 @@ const HandleConfig = ({ mode = 'load' }) => {
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
                   />
                 </div> */}
+                {/* Retraction Stroke Length Field */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    Insertion Stroke Length (mm)
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedConfig ? selectedConfig.insertionLength : ''}
+                    readOnly
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none"
+                  />
+                </div>
 
                 {/* Retraction Stroke Length Field */}
                 <div className="space-y-2">

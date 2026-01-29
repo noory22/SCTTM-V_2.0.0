@@ -472,13 +472,24 @@ const ProcessLogs = () => {
                         {selectedLog.configData.temperature || "--"} °C
                       </p>
                     </div> */}
+                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-200">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <RotateCcw className="w-4 h-4 text-purple-600" />
+                        <p className="text-slate-600 text-xs font-medium">
+                          Insertion Stroke Length
+                        </p>
+                      </div>
+                      <p className="text-purple-700 font-bold">
+                        {selectedLog.configData.insertionLength || "--"} mm
+                      </p>
+                    </div>
 
                     {/* Retraction Length */}
                     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-3 border border-purple-200">
                       <div className="flex items-center space-x-2 mb-1">
                         <RotateCcw className="w-4 h-4 text-purple-600" />
                         <p className="text-slate-600 text-xs font-medium">
-                          Retraction Length
+                          Retraction Stroke Length
                         </p>
                       </div>
                       <p className="text-purple-700 font-bold">
