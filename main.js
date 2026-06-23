@@ -624,7 +624,7 @@ async function deleteLogFile(filePath) {
 // ============================
 function createWindow() {
   const preloadPath = isDev 
-    ? path.join(__dirname, 'preload.js') 
+    ? path.join(__dirname, 'src/preload.js') 
     : path.join(__dirname, '.vite/build/preload/preload.js');
     
   console.log('Preload path:', preloadPath);
