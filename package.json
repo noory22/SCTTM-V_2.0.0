@@ -1,6 +1,6 @@
 {
   "name": "scttm",
-  "version": "2.0.0",
+  "version": "1.0.1",
   "description": "Specialized Catheter Trackability Testing Machine",
   "main": "main.js",
   "author": {
@@ -39,7 +39,7 @@
     "@serialport/bindings-cpp": "^13.0.1",
     "@serialport/parser-readline": "^13.0.0",
     "chart.js": "^4.5.1",
-    "electron-updater": "^6.1.7",
+    "electron-updater": "^6.8.9",
     "lucide-react": "^0.540.0",
     "modbus-serial": "^8.0.23",
     "react": "^19.1.1",

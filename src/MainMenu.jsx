@@ -516,7 +516,7 @@ const MainMenu = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm text-gray-400 font-medium">
-            <span>Version 1.0.0</span>
+            <span>Version 1.0.1</span>
           </div>
         </div>
       </footer>
