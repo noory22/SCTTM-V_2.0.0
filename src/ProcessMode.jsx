@@ -416,219 +416,219 @@ const ProcessMode = () => {
   ]);
 
   // Check temperature when component mounts or config changes
-  useEffect(() => {
-    if (readData.temperature !== "--") {
-      const realTimeTemp = parseFloat(readData.temperature);
-      // const targetTemp = parseFloat(selectedConfig.temperature); // IGNORED per new requirement
+  // useEffect(() => {
+  //   if (readData.temperature !== "--") {
+  //     const realTimeTemp = parseFloat(readData.temperature);
+  //     // const targetTemp = parseFloat(selectedConfig.temperature); // IGNORED per new requirement
 
-      if (!isNaN(realTimeTemp)) {
-        // Condition: Process should START if 35 < realTimeTemp < 39
-        // So we BLOCK if realTimeTemp <= 35 OR realTimeTemp >= 39
+  //     if (!isNaN(realTimeTemp)) {
+  //       // Condition: Process should START if 35 < realTimeTemp < 39
+  //       // So we BLOCK if realTimeTemp <= 35 OR realTimeTemp >= 39
 
-        // Strict range based on user request: "greater than 35 or less than 39" (interpreted as range)
-        const isTempTooLow = realTimeTemp <= 35;
-        const isTempTooHigh = realTimeTemp >= 39;
-        const isTempValid = !isTempTooLow && !isTempTooHigh;
+  //       // Strict range based on user request: "greater than 35 or less than 39" (interpreted as range)
+  //       const isTempTooLow = realTimeTemp <= 35;
+  //       const isTempTooHigh = realTimeTemp >= 39;
+  //       const isTempValid = !isTempTooLow && !isTempTooHigh;
 
-        // Check if process is active (running, paused, or retracting)
-        const isProcessActive =
-          isProcessRunning ||
-          isRetractionActive ||
-          isPaused ||
-          isRetractionPaused;
+  //       // Check if process is active (running, paused, or retracting)
+  //       const isProcessActive =
+  //         isProcessRunning ||
+  //         isRetractionActive ||
+  //         isPaused ||
+  //         isRetractionPaused;
 
-        console.log(
-          `🌡️ Temperature Check: Real=${realTimeTemp}°C, Range=[35-39], Valid=${isTempValid}`,
-        );
+  //       console.log(
+  //         `🌡️ Temperature Check: Real=${realTimeTemp}°C, Range=[35-39], Valid=${isTempValid}`,
+  //       );
 
-        if (
-          !isTempValid &&
-          !temperatureStatus.isHeatingActive &&
-          !isProcessActive
-        ) {
-          // Show dialog if temperature is invalid AND process is NOT active
+  //       if (
+  //         !isTempValid &&
+  //         !temperatureStatus.isHeatingActive &&
+  //         !isProcessActive
+  //       ) {
+  //         // Show dialog if temperature is invalid AND process is NOT active
 
-          // If too low, we can suggest heating. If too high, we just block.
-          if (isTempTooLow) {
-            setTemperatureStatus((prev) => ({
-              ...prev,
-              isHeatingRequired: true,
-              showHeatingDialog: true,
-              heaterButtonDisabled: false,
-              // targetTemperature: 37, // Optional: default target
-            }));
-          } else if (isTempTooHigh) {
-            // High Temp Case: Show dialog to explain blockage
-            setTemperatureStatus((prev) => ({
-              ...prev,
-              isHeatingRequired: true, // Reuse this flag to block start
-              showHeatingDialog: true, // Show blocking dialog
-              // heaterButtonDisabled: true // Optional: explicit disable
-            }));
-            // Also ensure heater is OFF if too high
-            if (temperatureStatus.isHeatingActive) turnOffHeater();
-          }
-        } else if (isTempValid) {
-          // If in range
-          if (temperatureStatus.isHeatingActive && !isTempTooLow) {
-            // If we were heating and now we are good (or too high), stop.
-            // Note: User logic implies valid is 35-39. Heating takes us UP.
-            // If we reach 35.1, we are valid.
-            // We can keep heating until we reach some target, but technically valid range starts at 35.
-            // Let's rely on the manual heater toggle or auto-off if we defined a target.
-            // For now, if we are in valid range, we UNBLOCK.
-          }
+  //         // If too low, we can suggest heating. If too high, we just block.
+  //         if (isTempTooLow) {
+  //           setTemperatureStatus((prev) => ({
+  //             ...prev,
+  //             isHeatingRequired: true,
+  //             showHeatingDialog: true,
+  //             heaterButtonDisabled: false,
+  //             // targetTemperature: 37, // Optional: default target
+  //           }));
+  //         } else if (isTempTooHigh) {
+  //           // High Temp Case: Show dialog to explain blockage
+  //           setTemperatureStatus((prev) => ({
+  //             ...prev,
+  //             isHeatingRequired: true, // Reuse this flag to block start
+  //             showHeatingDialog: true, // Show blocking dialog
+  //             // heaterButtonDisabled: true // Optional: explicit disable
+  //           }));
+  //           // Also ensure heater is OFF if too high
+  //           if (temperatureStatus.isHeatingActive) turnOffHeater();
+  //         }
+  //       } else if (isTempValid) {
+  //         // If in range
+  //         if (temperatureStatus.isHeatingActive && !isTempTooLow) {
+  //           // If we were heating and now we are good (or too high), stop.
+  //           // Note: User logic implies valid is 35-39. Heating takes us UP.
+  //           // If we reach 35.1, we are valid.
+  //           // We can keep heating until we reach some target, but technically valid range starts at 35.
+  //           // Let's rely on the manual heater toggle or auto-off if we defined a target.
+  //           // For now, if we are in valid range, we UNBLOCK.
+  //         }
 
-          // Unblock start
-          setTemperatureStatus((prev) => ({
-            ...prev,
-            isHeatingRequired: false,
-            showHeatingDialog: false,
-            // isHeatingActive: false, // Keep active if user wants to keep heating within range
-            heaterButtonDisabled: false,
-          }));
+  //         // Unblock start
+  //         setTemperatureStatus((prev) => ({
+  //           ...prev,
+  //           isHeatingRequired: false,
+  //           showHeatingDialog: false,
+  //           // isHeatingActive: false, // Keep active if user wants to keep heating within range
+  //           heaterButtonDisabled: false,
+  //         }));
 
-          console.log("✅ Temperature in valid range (35-39) - dialog closed");
-        }
-      }
-    }
-  }, [
-    readData.temperature,
-    isProcessRunning,
-    isRetractionActive,
-    isPaused,
-    isRetractionPaused,
-    temperatureStatus.isHeatingActive,
-  ]);
+  //         console.log("✅ Temperature in valid range (35-39) - dialog closed");
+  //       }
+  //     }
+  //   }
+  // }, [
+  //   readData.temperature,
+  //   isProcessRunning,
+  //   isRetractionActive,
+  //   isPaused,
+  //   isRetractionPaused,
+  //   temperatureStatus.isHeatingActive,
+  // ]);
 
-  // Monitor temperature to auto-close dialog when target is reached or exceeded
-  useEffect(() => {
-    if (temperatureStatus.isHeatingActive && readData.temperature !== "--") {
-      const realTimeTemp = parseFloat(readData.temperature);
-      // const targetTemp = temperatureStatus.targetTemperature || parseFloat(selectedConfig.temperature);
-      // User requirement: Valid if > 35.
-      // If we are heating, we assume we were below 35.
-      // We should probably stop if we are comfortably inside the range (e.g. > 35).
+  // // Monitor temperature to auto-close dialog when target is reached or exceeded
+  // useEffect(() => {
+  //   if (temperatureStatus.isHeatingActive && readData.temperature !== "--") {
+  //     const realTimeTemp = parseFloat(readData.temperature);
+  //     // const targetTemp = temperatureStatus.targetTemperature || parseFloat(selectedConfig.temperature);
+  //     // User requirement: Valid if > 35.
+  //     // If we are heating, we assume we were below 35.
+  //     // We should probably stop if we are comfortably inside the range (e.g. > 35).
 
-      if (!isNaN(realTimeTemp)) {
-        // Check if temperature is valid (e.g. > 35)
-        const isTempReached = realTimeTemp > 35.0;
+  //     if (!isNaN(realTimeTemp)) {
+  //       // Check if temperature is valid (e.g. > 35)
+  //       const isTempReached = realTimeTemp > 35.0;
 
-        if (isTempReached) {
-          console.log(
-            `✅ Valid temperature reached! Real=${realTimeTemp}°C > 35°C`,
-          );
+  //       if (isTempReached) {
+  //         console.log(
+  //           `✅ Valid temperature reached! Real=${realTimeTemp}°C > 35°C`,
+  //         );
 
-          // Turn off heater
-          // turnOffHeater(); // User didn't explicitly say to auto-off, but it's good practice.
-          // Note: If they want to reach 37, stopping at 35.01 might be annoying.
-          // I will leave the Heater ON but close the dialog/unblock.
+  //         // Turn off heater
+  //         // turnOffHeater(); // User didn't explicitly say to auto-off, but it's good practice.
+  //         // Note: If they want to reach 37, stopping at 35.01 might be annoying.
+  //         // I will leave the Heater ON but close the dialog/unblock.
 
-          // Actually, let's just update validity.
-          setTemperatureStatus((prev) => ({
-            ...prev,
-            isHeatingRequired: false,
-            showHeatingDialog: false, // Hide dialog
-            // isHeatingActive: false, // Don't force off, let user decide or reach target
-            heaterButtonDisabled: false,
-          }));
-        }
-      }
-    }
-  }, [readData.temperature, temperatureStatus.isHeatingActive]);
+  //         // Actually, let's just update validity.
+  //         setTemperatureStatus((prev) => ({
+  //           ...prev,
+  //           isHeatingRequired: false,
+  //           showHeatingDialog: false, // Hide dialog
+  //           // isHeatingActive: false, // Don't force off, let user decide or reach target
+  //           heaterButtonDisabled: false,
+  //         }));
+  //       }
+  //     }
+  //   }
+  // }, [readData.temperature, temperatureStatus.isHeatingActive]);
 
-  // Check temperature when component mounts
-  useEffect(() => {
-    if (selectedConfig) {
-      // Small delay to ensure data is loaded
-      setTimeout(() => {
-        if (readData.temperature !== "--") {
-          const realTimeTemp = parseFloat(readData.temperature);
-          // const targetTemp = parseFloat(selectedConfig.temperature);
+  // // Check temperature when component mounts
+  // useEffect(() => {
+  //   if (selectedConfig) {
+  //     // Small delay to ensure data is loaded
+  //     setTimeout(() => {
+  //       if (readData.temperature !== "--") {
+  //         const realTimeTemp = parseFloat(readData.temperature);
+  //         // const targetTemp = parseFloat(selectedConfig.temperature);
 
-          if (!isNaN(realTimeTemp)) {
-            // Range check: 35-39
-            const isTempTooLow = realTimeTemp <= 35;
-            const isTempTooHigh = realTimeTemp >= 39;
-            const isInvalid = isTempTooLow || isTempTooHigh;
+  //         if (!isNaN(realTimeTemp)) {
+  //           // Range check: 35-39
+  //           const isTempTooLow = realTimeTemp <= 35;
+  //           const isTempTooHigh = realTimeTemp >= 39;
+  //           const isInvalid = isTempTooLow || isTempTooHigh;
 
-            if (isInvalid) {
-              console.log(
-                `🔥 Temperature check on entry: Invalid Range (${realTimeTemp}°C). Blocking start.`,
-              );
-              setTemperatureStatus((prev) => ({
-                ...prev,
-                isHeatingRequired: true,
-                showHeatingDialog: true, // Show dialog for BOTH low and high temp
-                // targetTemperature: 37,
-                heaterButtonDisabled: false,
-              }));
-            }
-          }
-        }
-      }, 1000);
-    }
-  }, [selectedConfig]);
+  //           if (isInvalid) {
+  //             console.log(
+  //               `🔥 Temperature check on entry: Invalid Range (${realTimeTemp}°C). Blocking start.`,
+  //             );
+  //             setTemperatureStatus((prev) => ({
+  //               ...prev,
+  //               isHeatingRequired: true,
+  //               showHeatingDialog: true, // Show dialog for BOTH low and high temp
+  //               // targetTemperature: 37,
+  //               heaterButtonDisabled: false,
+  //             }));
+  //           }
+  //         }
+  //       }
+  //     }, 1000);
+  //   }
+  // }, [selectedConfig]);
 
-  const turnOnHeater = async () => {
-    try {
-      console.log("🔥 Turning heater ON...");
-      setTemperatureStatus((prev) => ({
-        ...prev,
-        heaterButtonDisabled: true,
-      }));
+  // const turnOnHeater = async () => {
+  //   try {
+  //     console.log("🔥 Turning heater ON...");
+  //     setTemperatureStatus((prev) => ({
+  //       ...prev,
+  //       heaterButtonDisabled: true,
+  //     }));
 
-      const result = await window.api.heater();
+  //     const result = await window.api.heater();
 
-      if (result && result.success) {
-        console.log("✅ Heater turned ON successfully");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          isHeatingActive: true,
-        }));
-      } else {
-        console.error("❌ Failed to turn heater ON");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          heaterButtonDisabled: false,
-        }));
-      }
-    } catch (error) {
-      console.error("❌ Error turning heater ON:", error);
-      setTemperatureStatus((prev) => ({
-        ...prev,
-        heaterButtonDisabled: false,
-      }));
-    }
-  };
+  //     if (result && result.success) {
+  //       console.log("✅ Heater turned ON successfully");
+  //       setTemperatureStatus((prev) => ({
+  //         ...prev,
+  //         isHeatingActive: true,
+  //       }));
+  //     } else {
+  //       console.error("❌ Failed to turn heater ON");
+  //       setTemperatureStatus((prev) => ({
+  //         ...prev,
+  //         heaterButtonDisabled: false,
+  //       }));
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Error turning heater ON:", error);
+  //     setTemperatureStatus((prev) => ({
+  //       ...prev,
+  //       heaterButtonDisabled: false,
+  //     }));
+  //   }
+  // };
 
-  const turnOffHeater = async () => {
-    try {
-      console.log("🔥 Turning heater OFF...");
+  // const turnOffHeater = async () => {
+  //   try {
+  //     console.log("🔥 Turning heater OFF...");
 
-      const result = await window.api.heaterOff();
+  //     const result = await window.api.heaterOff();
 
-      if (result && result.success) {
-        console.log("✅ Heater turned OFF successfully");
-        setTemperatureStatus((prev) => ({
-          ...prev,
-          isHeatingActive: false,
-          heaterButtonDisabled: false,
-        }));
-      }
-    } catch (error) {
-      console.error("❌ Error turning heater OFF:", error);
-    }
-  };
+  //     if (result && result.success) {
+  //       console.log("✅ Heater turned OFF successfully");
+  //       setTemperatureStatus((prev) => ({
+  //         ...prev,
+  //         isHeatingActive: false,
+  //         heaterButtonDisabled: false,
+  //       }));
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Error turning heater OFF:", error);
+  //   }
+  // };
 
-  const closeHeatingDialog = async () => {
-    // Turn off heater and navigate back
-    console.log(
-      "🔙 Closing heating dialog: Turning heater OFF and navigating back...",
-    );
-    await turnOffHeater();
-    navigate("/handle-config/load");
-  };
+  // const closeHeatingDialog = async () => {
+  //   // Turn off heater and navigate back
+  //   console.log(
+  //     "🔙 Closing heating dialog: Turning heater OFF and navigating back...",
+  //   );
+  //   await turnOffHeater();
+  //   navigate("/handle-config/load");
+  // };
 
   //-------------------------------------------------------------------------//
 
@@ -1050,14 +1050,14 @@ const ProcessMode = () => {
         }));
 
         // Reset temperature status
-        setTemperatureStatus({
-          isHeatingRequired: false,
-          isHeatingActive: false,
-          showHeatingDialog: false,
-          heaterButtonDisabled: false,
-          targetTemperature: null,
-          lastHeatingState: null,
-        });
+        // setTemperatureStatus({
+        //   isHeatingRequired: false,
+        //   isHeatingActive: false,
+        //   showHeatingDialog: false,
+        //   heaterButtonDisabled: false,
+        //   targetTemperature: null,
+        //   lastHeatingState: null,
+        // });
 
         stopCsvLogging();
         console.log("Process reset");
@@ -1076,7 +1076,7 @@ const ProcessMode = () => {
   // Add this to prevent process start when heating is required
   const shouldDisableStartButton = () => {
     if (shouldDisableButtons()) return true;
-    if (temperatureStatus.isHeatingRequired) return true; // Disable if heating is required
+    // if (temperatureStatus.isHeatingRequired) return true; // Disable if heating is required
     if (isRetractionEnabled && !isRetractionPaused) return true;
     if (isRetractionPaused) return true;
     if (isRetractionCompleted) return false;
@@ -1611,13 +1611,13 @@ const ProcessMode = () => {
                   <span>Sensor Verification</span>
                 </h3>
                 <ul className="space-y-2 text-green-800">
-                  <li className="flex items-start space-x-2">
+                  {/* <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span>
                       <strong>Temperature Reading:</strong> Check temperature
                       sensor shows valid readings.
                     </span>
-                  </li>
+                  </li> */}
                   <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span>
@@ -1648,13 +1648,13 @@ const ProcessMode = () => {
                       set correctly (in mN).
                     </span>
                   </li>
-                  <li className="flex items-start space-x-2">
+                  {/* <li className="flex items-start space-x-2">
                     <span className="font-bold mt-1">•</span>
                     <span>
                       <strong>Temperature:</strong> Ensure temperature setting
                       is appropriate.
                     </span>
-                  </li>
+                  </li> */}
                 </ul>
               </div>
 
@@ -1930,7 +1930,7 @@ const ProcessMode = () => {
             {!isXlScreen && (
               <div className="mb-3 grid grid-cols-2 gap-2 flex-shrink-0">
                 {/* Temperature box */}
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
+                {/* <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg border border-orange-200/50 p-2">
                   <div className="flex items-center space-x-2 mb-1">
                     <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center">
                       <Thermometer className="w-3 h-3 text-white" />
@@ -1942,7 +1942,7 @@ const ProcessMode = () => {
                   <p className="text-sm font-bold text-orange-600">
                     {readData.temperatureDisplay}
                   </p>
-                </div>
+                </div> */}
 
                 {/* Force box */}
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-200/50 p-2">
@@ -1973,7 +1973,7 @@ const ProcessMode = () => {
                 </div>
 
                 {/* Status box */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
+                <div className="col-span-2 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200/50 p-2">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
                       <div
@@ -2140,7 +2140,7 @@ const ProcessMode = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
+                {/* <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
                     <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-sm">
                       <Thermometer className="w-4 h-4 text-white" />
@@ -2152,7 +2152,7 @@ const ProcessMode = () => {
                   <p className="text-xl font-bold text-orange-600">
                     {readData.temperatureDisplay}
                   </p>
-                </div>
+                </div> */}
 
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl border border-cyan-200/50 p-3">
                   <div className="flex items-center space-x-2 mb-1.5">
